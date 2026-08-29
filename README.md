@@ -21,11 +21,49 @@ This is an ideal resource for short bioinformatics projects in R, Python, or Bas
 - Comparative genomics
 - Data visualisation
 
+## Analysis suite (`analysis/`)
+
+The exercises below are still good starting points, but a lot of this is
+now automated, incremental, and QC-gated across the whole dataset in
+[`analysis/`](analysis/README.md):
+
+- **qc_basic_stats** — is a given assembly actually trustworthy? (Don't
+  skip this — see below.)
+- **annotation** — oatk's own gene calls, reshaped into one tidy table.
+- **repeats** — repeat families and putative recombination-mediating
+  repeats (the mechanism behind multipartite mitochondrial structure).
+- **synteny** — the MTPT exercise just below, automated for every species,
+  plus dotplots and a pairwise mode for comparing species in a genus.
+- **phylogeny** — a partitioned ML tree per organelle from single-copy
+  marker genes.
+- **orf_scan** — non-core ORFs screened against Pfam for transposable
+  element / mitovirus content (opt-in — heavier than the rest, see its
+  README).
+
+Every module works on the full ~1250-species dataset by default, but also
+takes a `--species-list` for a mini-project on a handful of species (a
+genus, a family, whatever question you're asking). Run the lightweight
+ones together with `analysis/run_all.sh` — see
+[`analysis/README.md`](analysis/README.md) for usage.
+
+**Before trusting any of it**: with ~1250 semi-automated assemblies, some
+are empty, fragmented, or otherwise suspect. `analysis/qc_basic_stats`
+computes a `pass`/`flag`/`fail` per species and every other module filters
+against it by default — see
+[`analysis/qc_basic_stats/README.md`](analysis/qc_basic_stats/README.md)
+for what's actually being checked and why.
+
 ## DNA transfer between mito and plastid
 
 Detect DNA transfer between plastid and mitochondria (MTPTs)
 
 A classic phenomenon in plants is plastid DNA inserted into mitochondria (often called MTPTs).
+
+This is now automated for the whole dataset in `analysis/synteny/` (PAFs,
+dotplots, and a summary table per species) — see
+[`analysis/synteny/README.md`](analysis/synteny/README.md). The manual
+command below is still a good first exercise for understanding what's
+actually happening under the hood.
 
 Simple workflow:
 
@@ -47,6 +85,19 @@ In R you could:
 - Compare clades (monocots vs dicots)
 
 ## Notes
+
+### A note on duplicate runs
+
+A handful of species have both a bare (`Species.mito.gfa`) and a
+parameter-infixed (`Species.k1001.s31.c80.mito.gfa`) run sitting side by
+side in `data/`, because `src/03_move_assemblies.sh` doesn't guard against
+a re-run leaving old and new files together. If you're working with these
+files directly, don't assume the newer-looking (infixed) file is the
+better one — for at least one species in this dataset it's actually a
+failed, empty rerun, while the original bare file is the valid assembly.
+`analysis/common/species_discovery.py` handles this correctly (picks
+whichever run has the most complete, non-empty file set); if you're
+writing your own script against `data/` directly, check file sizes.
 
 ### A note on default parameters
 Default parameters are:

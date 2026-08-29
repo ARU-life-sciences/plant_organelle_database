@@ -1,0 +1,132 @@
+#nexus
+begin sets;
+  charset p1_accD = 1-1569;
+  charset p2_atpA = 1570-3104;
+  charset p3_atpB = 3105-4617;
+  charset p4_atpE = 4618-5045;
+  charset p5_atpH = 5046-5287;
+  charset p6_atpI = 5288-6049;
+  charset p7_cemA = 6050-6845;
+  charset p8_infA = 6846-7439;
+  charset p9_matK = 7440-9897;
+  charset p10_ndhC = 9898-10304;
+  charset p11_ndhD = 10305-12005;
+  charset p12_ndhE = 12006-12318;
+  charset p13_ndhG = 12319-12904;
+  charset p14_ndhH = 12905-14321;
+  charset p15_ndhI = 14322-14840;
+  charset p16_ndhJ = 14841-15348;
+  charset p17_ndhK = 15349-16294;
+  charset p18_petA = 16295-17329;
+  charset p19_petB = 17330-17969;
+  charset p20_petD = 17970-18468;
+  charset p21_petG = 18469-18578;
+  charset p22_psaC = 18579-18821;
+  charset p23_psaI = 18822-18934;
+  charset p24_psaJ = 18935-19068;
+  charset p25_psbB = 19069-20594;
+  charset p26_psbC = 20595-22012;
+  charset p27_psbE = 22013-22260;
+  charset p28_psbF = 22261-22376;
+  charset p29_psbH = 22377-22621;
+  charset p30_psbI = 22622-22729;
+  charset p31_psbJ = 22730-22848;
+  charset p32_psbK = 22849-23052;
+  charset p33_psbL = 23053-23172;
+  charset p34_psbM = 23173-23276;
+  charset p35_psbN = 23277-23405;
+  charset p36_psbT = 23406-23504;
+  charset p37_psbZ = 23505-23689;
+  charset p38_rbcL = 23690-25113;
+  charset p39_rpl14 = 25114-25522;
+  charset p40_rpl16 = 25523-25926;
+  charset p41_rpl20 = 25927-26354;
+  charset p42_rpl22 = 26355-27729;
+  charset p43_rpl32 = 27730-27920;
+  charset p44_rpl33 = 27921-28218;
+  charset p45_rpl36 = 28219-28328;
+  charset p46_rpoB = 28329-31901;
+  charset p47_rpoC2 = 31902-36214;
+  charset p48_rps11 = 36215-36738;
+  charset p49_rps14 = 36739-37068;
+  charset p50_rps15 = 37069-37391;
+  charset p51_rps18 = 37392-37979;
+  charset p52_rps19 = 37980-38194;
+  charset p53_rps2 = 38195-38990;
+  charset p54_rps3 = 38991-40098;
+  charset p55_rps4 = 40099-41026;
+  charset p56_rps8 = 41027-41553;
+  charset p57_trnD_GUC = 41554-41627;
+  charset p58_trnK_UUU = 41628-44409;
+  charset p59_trnP_UGG = 44410-44483;
+  charset p60_trnV_UAC = 44484-46409;
+  charset p61_trnW_CCA = 46410-46483;
+  charset p62_trnY_GUA = 46484-46567;
+  charset p63_trnfM_CAU = 46568-46641;
+  charset p64_ycf4 = 46642-47248;
+  charpartition mymodels =
+    TVM+F+I: p1_accD,
+    GTR+F+I+R8: p2_atpA,
+    GTR+F+R7: p3_atpB,
+    TVM+F+I+R6: p4_atpE,
+    TVM+F+R5: p5_atpH,
+    TVM+F+R6: p6_atpI,
+    GTR+F+I+R6: p7_cemA,
+    TVM+F+R5: p8_infA,
+    TVM+F+R8: p9_matK,
+    GTR+F+R6: p10_ndhC,
+    GTR+F+R7: p11_ndhD,
+    TVM+F+I+R6: p12_ndhE,
+    TVM+F+R7: p13_ndhG,
+    GTR+F+R6: p14_ndhH,
+    GTR+F+R7: p15_ndhI,
+    GTR+F+R7: p16_ndhJ,
+    TVM+F+R6: p17_ndhK,
+    TVM+F+R8: p18_petA,
+    GTR+F+R7: p19_petB,
+    TVM+F+I+R6: p20_petD,
+    GTR+F+R5: p21_petG,
+    GTR+F+I+R5: p22_psaC,
+    TVM+F+I+G4: p23_psaI,
+    TVM+F+I+R4: p24_psaJ,
+    GTR+F+I+R7: p25_psbB,
+    GTR+F+I+R7: p26_psbC,
+    TPM3u+F+I+R5: p27_psbE,
+    TVM+F+I+G4: p28_psbF,
+    GTR+F+R5: p29_psbH,
+    TVM+F+R5: p30_psbI,
+    TVM+F+I+G4: p31_psbJ,
+    GTR+F+I+G4: p32_psbK,
+    K3Pu+F+I+R3: p33_psbL,
+    TVM+F+I+R5: p34_psbM,
+    GTR+F+I+R4: p35_psbN,
+    TVM+F+I+R5: p36_psbT,
+    GTR+F+I+R4: p37_psbZ,
+    GTR+F+R9: p38_rbcL,
+    GTR+F+I+R6: p39_rpl14,
+    GTR+F+R7: p40_rpl16,
+    GTR+F+I+R6: p41_rpl20,
+    TVM+F+I+R7: p42_rpl22,
+    GTR+F+R6: p43_rpl32,
+    GTR+F+I+R5: p44_rpl33,
+    TVM+F+I+G4: p45_rpl36,
+    GTR+F+I+R7: p46_rpoB,
+    TVM+F+I: p47_rpoC2,
+    TVM+F+I+R6: p48_rps11,
+    GTR+F+I+R5: p49_rps14,
+    TVM+F+I+R6: p50_rps15,
+    TVM+F+I+R5: p51_rps18,
+    HKY+F+I: p52_rps19,
+    GTR+F+I+R6: p53_rps2,
+    GTR+F+R7: p54_rps3,
+    GTR+F+I+R5: p55_rps4,
+    GTR+F+I+R6: p56_rps8,
+    TIM2e+I+G4: p57_trnD_GUC,
+    TVM+F+G4: p58_trnK_UUU,
+    TIM3e+I+G4: p59_trnP_UGG,
+    TVM+F+I+R6: p60_trnV_UAC,
+    K3P+I+G4: p61_trnW_CCA,
+    K2P+I+G4: p62_trnY_GUA,
+    K2P+R4: p63_trnfM_CAU,
+    GTR+F+R7: p64_ycf4;
+end;

@@ -1,0 +1,30 @@
+#nexus
+begin sets;
+  charset p1_atp4 = 1-696;
+  charset p2_ccmB = 697-1355;
+  charset p3_ccmC = 1356-2110;
+  charset p4_mttB = 2111-2912;
+  charset p5_nad5 = 2913-3199;
+  charset p6_nad9 = 3200-3773;
+  charset p7_rps14 = 3774-4081;
+  charset p8_rrn5 = 4082-4193;
+  charset p9_trnE-UUC = 4194-4274;
+  charset p10_trnI-CAU = 4275-4353;
+  charset p11_trnQ-UUG = 4354-4426;
+  charset p12_trnR-UCG = 4427-4497;
+  charset p13_trnY-GUA = 4498-4584;
+  charpartition mymodels =
+    TVM+F+R5: p1_atp4,
+    GTR+F+I+R3: p2_ccmB,
+    GTR+F+I+R4: p3_ccmC,
+    GTR+F+I+R4: p4_mttB,
+    GTR+F+I+R3: p5_nad5,
+    HKY+F: p6_nad9,
+    JC: p7_rps14,
+    JC: p8_rrn5,
+    TNe+R2: p9_trnE-UUC,
+    TVMe+I+G4: p10_trnI-CAU,
+    K2P+I+G4: p11_trnQ-UUG,
+    JC: p12_trnR-UCG,
+    TPM3+R3: p13_trnY-GUA;
+end;

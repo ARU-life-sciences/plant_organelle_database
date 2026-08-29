@@ -4,6 +4,22 @@ config/paths.env
 __pycache__/
 *.pyc
 *.log
+
+# analysis/ scratch intermediates (temp blast dbs, work-in-progress files) -
+# only final results/ tables, PAFs, alignments, and trees are tracked.
+analysis/*/work/
+analysis/common/.cache/
+
+# samtools faidx index files, created as a side effect of annotation/orf_scan
+# reading data/*.ctg.fasta - trivially regenerable, not worth committing.
+data/**/*.fasta.fai
+
+# IQ-TREE internal byproducts with no value once a run has completed
+# successfully: .ckp.gz only supports resuming an interrupted run,
+# .uniqueseq.phy is a deduplicated-alignment scratch file redundant with
+# the alignments already kept under phylogeny/results/alignments|concat/.
+analysis/phylogeny/results/trees/*.ckp.gz
+analysis/phylogeny/results/trees/*.uniqueseq.phy
 rev/out/Carex_depauperata/Carex_depauperata.k1001.s31.c40.deadend_c40.utg.gfa
 rev/out/Amsinckia_menziesii/Amsinckia_menziesii.k1001.s31.c40.deadend_c40.utg.gfa
 rev/out/Triglochin_maritima/Triglochin_maritima.k1001.s31.c40.deadend_c40.utg.gfa
