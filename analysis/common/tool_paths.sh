@@ -32,7 +32,13 @@ BANDAGE_ENV="${BANDAGE_ENV:-/nfs/users/nfs_m/mb39/miniconda3/envs/bandage}"
 BANDAGE="${BANDAGE:-${BANDAGE_ENV}/bin/Bandage}"
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
 
-for tool_var in GFATK MINIMAP2 SAMTOOLS SEQKIT BLASTN MAKEBLASTDB CDHIT_EST MAFFT IQTREE2 GFATOOLS BANDAGE; do
+# GraphAligner (only used by linearize/'s gfatk-resolve fallback tier) - a shpc
+# container wrapper, equivalent to `module load graphaligner/1.0.19--hdcf5f25_1`
+# but resolved to a stable absolute path so non-interactive bsub jobs don't
+# depend on the modules system being sourced in their shell.
+GRAPHALIGNER="${GRAPHALIGNER:-/software/treeoflife/shpc/0.1.26/wrapper/quay.io/biocontainers/graphaligner/1.0.19--hdcf5f25_1/bin/GraphAligner}"
+
+for tool_var in GFATK MINIMAP2 SAMTOOLS SEQKIT BLASTN MAKEBLASTDB CDHIT_EST MAFFT IQTREE2 GFATOOLS BANDAGE GRAPHALIGNER; do
   tool_path="${!tool_var}"
   if [[ ! -x "${tool_path}" ]]; then
     echo "[warn] tool_paths.sh: ${tool_var}=${tool_path} is not executable/found" >&2

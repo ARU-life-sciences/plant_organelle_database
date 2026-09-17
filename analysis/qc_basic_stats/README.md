@@ -52,9 +52,46 @@ Each check is either a **flag** (worth a look, not disqualifying) or a
   is whichever genes are present in ≥90% of non-empty assemblies for that
   organelle (see `core_genes_*.tsv`) — not a textbook list, so it
   naturally adapts if oatk's gene family database changes.
-- **no resolved contig fasta** (only the `gfa_fallback`) → flag.
+- **no resolved contig fasta** (only the `gfa_fallback`, or an
+  `unjoined`-tagged variant — see below) → flag.
 - **cross-organelle alignment fraction** above 15%/35% → flag/fail. See
   below.
+
+### `no_resolved_ctg_fasta(unjoined)`: a non-empty `.ctg.fasta` isn't proof anything resolved
+
+Found by checking a specific user question ("ferns definitely wouldn't
+linearize properly, right?") against `Azolla_filiculoides`: its
+`.mito.ctg.fasta` has 175 contigs, but **every one of them is `nv=1`** —
+one contig per raw graph segment, meaning Pathfinder never joined a single
+pair of nodes into a path. The file being non-empty made `has_ctg_fasta`
+true, so this was invisible to the QC gate entirely.
+
+Scanning the whole dataset for the same signature (all contigs `nv=1`,
+≥5 contigs — the ≥5 floor matches the fragmentation check's own precedent
+that real multipartite plant mitogenomes are 2-4 subgenomic circles, so
+5+ never-joined pieces isn't plausible biology) found **78 species**, heavily
+concentrated in ferns/pteridophytes (`Vandenboschia_speciosa`,
+`Asplenium_marinum`, `Polystichum_lonchitis`, `Dryopteris_filix_mas`,
+`Pteridium_aquilinum`, and most other ferns in the dataset) — consistent
+with their reputation for large, repeat-rich mitogenomes that trip up
+graph-topology heuristics. `has_ctg_fasta` now treats this case as *not*
+resolved, same as a genuinely empty file, with `n_contigs`/
+`pct_unjoined_contigs` columns added to `qc_summary.tsv` so the two
+subtypes stay distinguishable (`no_resolved_ctg_fasta` vs.
+`no_resolved_ctg_fasta(unjoined)`).
+
+This had a second, non-obvious effect: the cross-organelle contamination
+check was previously running its mito-vs-plastid `minimap2` alignment
+against these 78 species' fragmented mito *junk* too (since it only
+gated on the old, wrong `has_ctg_fasta`), producing spurious high
+alignment fractions against noise — 20 species' **plastid** status
+corrected from `flag`/`fail` back to `pass` once their mito side was
+correctly excluded from that comparison. Their plastid genomes were never
+actually contaminated; they were being compared against garbage.
+
+See [`../linearize/README.md`](../linearize/README.md) for how these 78
+species (plus the pre-existing `no_resolved_ctg_fasta` ones) get a second
+attempt at linearization.
 
 ### Why the contamination check is a minimap2 alignment, not a gene-name check
 

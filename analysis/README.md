@@ -20,6 +20,7 @@ qc_basic_stats  →  annotation  →  ┬─ repeats
                                    └─ phylogeny
 qc_basic_stats  →  orf_scan          (opt-in, not in run_all.sh - see below)
 qc_basic_stats  →  topology_plots    (opt-in, not in run_all.sh - see below)
+qc_basic_stats  →  linearize         (opt-in, not in run_all.sh - see below)
 ```
 
 1. **[qc_basic_stats](qc_basic_stats/README.md)** — is this assembly real
@@ -49,6 +50,15 @@ qc_basic_stats  →  topology_plots    (opt-in, not in run_all.sh - see below)
    this reproduces). Cheap (~1s/render) — also **opt-in, not part of
    `run_all.sh`**, since its default target (QC-flagged species) depends on
    `qc_basic_stats` having already run.
+8. **[linearize](linearize/README.md)** — an alternative, independent
+   linearization of every assembly graph via `gfatk linear` (cheap,
+   graph-only, no new dependencies), plus an opt-in `gfatk resolve` fallback
+   using real PacBio HiFi read-path evidence (via `GraphAligner`) for
+   species where oatk's own Pathfinder produced nothing at all
+   (`no_resolved_ctg_fasta`). **Opt-in, not part of `run_all.sh`** — the
+   `gfatk linear` pass is cheap enough to run whenever, but the
+   read-evidence fallback needs LSF submission and touches raw read data
+   outside this repo, so it's never run implicitly.
 
 ## Running it
 

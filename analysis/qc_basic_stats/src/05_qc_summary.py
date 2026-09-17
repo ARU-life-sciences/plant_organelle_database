@@ -54,6 +54,30 @@ noise. any_circular here is read from contig_stats' ctg.fasta-header
 value instead, which reflects the structure actually delivered to
 students.
 
+Note on unjoined contigs (a has_ctg_fasta blind spot, found via manual
+inspection of Azolla_filiculoides prompted by a user question about ferns):
+a non-empty .ctg.fasta is not the same as Pathfinder actually resolving
+anything - oatk can emit one contig per raw graph segment (nv=1, i.e. zero
+nodes joined into any path) when it can't make sense of a graph, and
+that file is just as "non-empty" as a real resolved genome. Verified by
+comparing contig count against nv=1 count across the whole dataset: 78
+species (mostly fern/pteridophyte mitogenomes - Vandenboschia_speciosa,
+Asplenium spp., Polystichum spp., Dryopteris spp., Pteridium_aquilinum,
+etc., known for repeat-rich/complex mitogenomes that trip up graph
+heuristics - plus a scatter of others e.g. Phacelia_tanacetifolia with
+353 singleton contigs) have contig_source=="ctg_fasta" but EVERY contig
+is nv=1, with 5+ such contigs (the >=5 floor matches the fragmentation
+threshold's precedent: real multipartite plant mitogenomes are 2-4
+subgenomic circles, so 5+ never-joined pieces isn't plausible biology).
+has_ctg_fasta is corrected to treat this case as NOT resolved - it's
+functionally identical to Pathfinder producing nothing, just disguised
+by a non-empty file - which automatically folds these species into the
+existing no_resolved_ctg_fasta reason (tagged "(unjoined)" to distinguish
+from a genuinely-empty ctg_fasta) and therefore into every downstream
+process that already keys off that reason (revision_plan_v2, and
+analysis/linearize's gfatk-resolve fallback tier) with no further changes
+needed there.
+
 Note on fragmentation: n_subgraphs distribution (mito, full dataset) shows a
 clean natural break - 1154/1250 species have 1-4 subgraphs (consistent with
 real single-chromosome or modest multipartite biology, matches the literature),
@@ -87,8 +111,8 @@ import species_discovery as sd  # noqa: E402
 
 RESULTS_DIR = ANALYSIS_DIR / "qc_basic_stats" / "results"
 COLUMNS = ["species", "organelle", "has_gfa", "has_ctg_fasta", "n_subgraphs", "any_circular",
-           "dead_end_nodes", "total_length", "size_mad_z", "core_gene_pct",
-           "cross_organelle_aligned_frac", "status", "status_reasons"]
+           "dead_end_nodes", "total_length", "size_mad_z", "core_gene_pct", "n_contigs",
+           "pct_unjoined_contigs", "cross_organelle_aligned_frac", "status", "status_reasons"]
 
 CROSS_ORG_FLAG_THRESHOLD = 0.15
 CROSS_ORG_FAIL_THRESHOLD = 0.35
@@ -100,6 +124,12 @@ FRAGMENTATION_FAIL_THRESHOLD = 10
 CORE_GENE_FLAG_THRESHOLD = 0.80
 CORE_GENE_FAIL_THRESHOLD = 0.50
 QC_CORE_GENE_PRESENCE_THRESHOLD = 0.90
+# A ctg.fasta where every single contig is nv=1 (no graph segments ever
+# joined into a path) with this many or more contigs is Pathfinder having
+# produced nothing usable, not a real multipartite genome - see the
+# "Note on unjoined contigs" module docstring above.
+UNJOINED_MIN_CONTIGS = 5
+UNJOINED_PCT_THRESHOLD = 1.0
 
 
 def aggregate_gfa_stats(gfa_stats: pd.DataFrame, organelle: str) -> pd.DataFrame:
@@ -129,6 +159,7 @@ def aggregate_gfa_stats(gfa_stats: pd.DataFrame, organelle: str) -> pd.DataFrame
 
 def aggregate_contig_stats(contig_stats: pd.DataFrame, organelle: str) -> pd.DataFrame:
     sub = contig_stats[contig_stats["organelle"] == organelle].copy()
+    sub["nv"] = pd.to_numeric(sub["nv"], errors="coerce")
 
     def agg(group):
         if (group["contig_source"] == "ctg_fasta").any():
@@ -137,10 +168,13 @@ def aggregate_contig_stats(contig_stats: pd.DataFrame, organelle: str) -> pd.Dat
             contig_source = "gfa_fallback"
         else:
             contig_source = "no_assembly"
-        # circularity only meaningful for real resolved contigs, not gfa_fallback unitig soup
+        # circularity/joined-ness only meaningful for real resolved contigs, not gfa_fallback unitig soup
         resolved = group[group["contig_source"] == "ctg_fasta"]
         any_circular = (resolved["circular"] == "true").any() if not resolved.empty else np.nan
-        return pd.Series({"contig_source": contig_source, "any_circular": any_circular})
+        n_contigs = len(resolved) if not resolved.empty else np.nan
+        pct_unjoined = (resolved["nv"] == 1).mean() if not resolved.empty else np.nan
+        return pd.Series({"contig_source": contig_source, "any_circular": any_circular,
+                           "n_contigs": n_contigs, "pct_unjoined_contigs": pct_unjoined})
 
     return sub.groupby("species").apply(agg, include_groups=False).reset_index()
 
@@ -231,7 +265,16 @@ def build_status(row: pd.Series) -> tuple[str, str]:
                 reasons_flag.append("core_gene_pct<0.80")
         has_ctg = row.get("has_ctg_fasta")
         if pd.notna(has_ctg) and not bool(has_ctg):
-            reasons_flag.append("no_resolved_ctg_fasta")
+            # distinguish "ctg.fasta exists but every contig is an unjoined
+            # singleton" (Pathfinder ran, produced nothing usable) from a
+            # genuinely absent/empty ctg.fasta - same underlying failure
+            # (nothing resolved), different visible symptom. Substring match
+            # on "no_resolved_ctg_fasta" still catches both for every
+            # downstream consumer of status_reasons.
+            if row.get("contig_source") == "ctg_fasta":
+                reasons_flag.append("no_resolved_ctg_fasta(unjoined)")
+            else:
+                reasons_flag.append("no_resolved_ctg_fasta")
         cof = row.get("cross_organelle_aligned_frac")
         if pd.notna(cof):
             if cof > CROSS_ORG_FAIL_THRESHOLD:
@@ -267,7 +310,9 @@ def main():
         cgp = core_gene_completeness(gene_matrix, core_genes)
 
         df = gfa_agg.merge(contig_agg, on="species", how="left")
-        df["has_ctg_fasta"] = df["contig_source"] == "ctg_fasta"
+        unjoined_failure = (df["n_contigs"] >= UNJOINED_MIN_CONTIGS) & \
+                            (df["pct_unjoined_contigs"] >= UNJOINED_PCT_THRESHOLD)
+        df["has_ctg_fasta"] = (df["contig_source"] == "ctg_fasta") & ~unjoined_failure.fillna(False)
         df = df.merge(cgp, on="species", how="left")
         df["size_mad_z"] = size_mad_z(df)
         df["organelle"] = organelle
