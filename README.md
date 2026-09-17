@@ -129,3 +129,116 @@ src/07_revision_submit_oatk_from_list.sh \
   --max-gb 15 \
   --suffix deadend_c40  
 ```
+
+#### Revision plan v2 (driven by `analysis/qc_basic_stats`)
+
+The two recipes above predate `analysis/` and were based on
+`meta/dead_ends.tsv` (mito-only, dead-ends and memory-kills only).
+`src/08_revision_plan_v2.py` supersedes that planning step for anything
+`analysis/qc_basic_stats`'s richer QC gate can see (both organelles, 6
+distinct failure reasons) — it reads `qc_summary.tsv` and writes
+`meta/revision_plan_v2.tsv`, one row per species with a specific
+`--coverage`/`--max-gb` recipe and a **written justification**, not just a
+number. Re-run it any time `qc_summary.tsv` changes.
+
+Scope: every `fail`-tier species, plus `no_resolved_ctg_fasta` species
+(flag-tier only under the current thresholds, but judged to need the same
+treatment — see below). The other flag-only reasons (`non_circular`,
+`size_outlier`, `elevated_cross_organelle_alignment` 15-35%) are
+deliberately **not** included — those are mostly real biological
+variation, not assembly defects, and reassembling on that basis alone
+would be guessing rather than fixing anything.
+
+| reason | species | recipe | why |
+|---|---|---|---|
+| `dead_end_nodes` | 39 | `-c 40 --max-gb 15` | established convention (above): lower coverage admits rarer k-mers that can bridge a dead-end path |
+| `fragmented` (n_subgraphs≥10) | 21 | `-c 40 --max-gb 15` | same graph-connectivity mechanism as dead-ends. **Least validated mapping** — fragmentation could in principle also come from too much low-frequency *noise*, which would call for *raising* coverage instead. Check whether the pilot's fragmented-species actually improve before scaling this one to the rest. |
+| `no_resolved_ctg_fasta` | 55 | `-c 40 --max-gb 15` | the graph exists but Pathfinder couldn't resolve a clean path through it; re-running Pathfinder alone on the *same* graph is deterministic and would just fail the same way again, so this needs the same graph-quality fix as dead-ends/fragmentation, not a cheaper shortcut |
+| `missing_gfa` | 38 | `-c 80 --max-gb 16` (defaults) | assembly never completed; first attempt is just a normal run, no speculative adjustment. (If a memory-kill is found in that species' logs instead, use the memfix recipe above, not this one.) |
+| `core_gene_pct` <50% | 4 | `-c 80 --max-gb 25` | low completeness looks like too little input data, not a graph-resolution problem, so raise the data budget rather than the coverage threshold |
+| `high_cross_organelle_alignment` >35% | 101 | `-c 80 --max-gb 16` (defaults) | not obviously a connectivity/data problem — a baseline re-check to rule out "was the original assembly just noisy", not a targeted fix. Some of these are likely real biology (e.g. `Juncus_inflexus`, visually confirmed as a clean plastid graph despite this flag via `analysis/topology_plots`) — species still flagged after one attempt should be documented as probably genuine, not repeatedly reassembled on no particular basis. |
+
+A species failing for more than one reason (46/258) gets exactly one
+recipe, chosen by priority (most clearly mechanical first): `dead_end_nodes`
+› `fragmented` › `no_resolved_ctg_fasta` › `missing_gfa` › `core_gene_pct`
+› `high_cross_organelle_alignment`.
+
+#### Promoting a rerun: never on file size/recency alone
+
+`src/09_promote_revision.py` compares a completed `rev/out/` rerun against
+whatever is currently in `data/` using the same metrics `qc_basic_stats`
+uses (dead-end nodes, subgraph count, resolved-contig-fasta presence), and
+only promotes it if it's **objectively better** — never because it's
+newer or the file happens to be a different size.
+
+This matters because a first attempt at automating this (species_discovery's
+own "prefer the larger, non-empty candidate" tie-break, designed to reject
+a truly-empty failed rerun) silently picked the **worse** of two genuinely
+valid runs in many cases — fixing dead-ends/fragmentation by lowering
+coverage often produces a cleaner *and smaller* assembly, which that
+heuristic penalised. Concretely: of 123 already-completed reruns found
+sitting unpromoted in `rev/out/` from before this pipeline existed, only
+59/109 comparable mito results and 7/120 plastid results were actually
+better - the other 38 mito / 6 plastid would have made things **worse**
+if promoted on file size alone.
+
+Superseded old files are moved to a `superseded/` subdirectory within the
+species folder — never deleted, never left in place to compete (that
+subdirectory is invisible to `species_discovery`'s non-recursive glob).
+
+#### Pilot results (54 species, ~10 per category, first batch of new reassemblies)
+
+The first pass at comparing `rev/out/` reruns against `data/` (both here
+and in the historical-backlog promotion above) required BOTH dead-end
+count and subgraph count to not worsen before calling a rerun "better".
+Verified on real data that this is too strict: a rerun targeting
+dead-ends can genuinely fix them while only slightly nudging subgraph
+count, and the blanket rule mislabelled real fixes as "worse". Also, the
+first version of this table was generated by comparing against a QC
+snapshot taken *before* the historical-backlog promotion had run, so
+several "test" species had already been fixed by that promotion and
+weren't actually testing anything. `src/09_promote_revision.py` was
+fixed to (a) take an explicit `--primary-metric` per category (improving
+the metric the recipe actually targets is enough for "better", with a
+new `mixed` outcome - flagged for manual review, never auto-promoted -
+when the *other* metric regresses by more than a couple of units, which
+does happen for real) and (b) always compare against a freshly-regenerated
+`revision_plan_v2.tsv`. Corrected numbers:
+
+| reason | mito | plastid |
+|---|---|---|
+| `no_resolved_ctg_fasta` | 0/9 better | **9/9 better** |
+| `dead_end_nodes` | **1/9 better**, 1 `mixed`, 1 worse, 6 already-fixed (`same`) | 1/10 better |
+| `fragmented` | **0/10 better**, 1 `mixed`, 2 worse, 7 unchanged | 0/10 better |
+| `missing_gfa` | 1/4 comparable (6/10 still produced no assembly at all) | 0/7 better |
+| `core_gene_pct` | 1/3 better | 0/3 better |
+| `high_cross_organelle_alignment` | 0/10 better | 0/10 better |
+
+Reading this, now that it's measuring the right thing:
+- `no_resolved_ctg_fasta` still works essentially as predicted (plastid
+  side, where the gap overwhelmingly is) - **worth scaling to the rest**.
+- `dead_end_nodes` genuinely does work when there's still a real problem to
+  fix (`Agrostis_gigantea`: 6→0 dead-ends) - the earlier "0/9" reading was
+  an artifact of testing against already-fixed species, not a failure of
+  the recipe. **Worth scaling**, but expect a `mixed` outcome sometimes
+  (`Amsinckia_menziesii`: dead-ends 7→4, but subgraphs exploded 1→25 - a
+  real trade-off, not noise) that needs a human to look at rather than
+  auto-promote.
+- `fragmented` is the one recipe that doesn't hold up as a general rule:
+  7/10 mito species showed **zero change** in subgraph count at all, 2 got
+  worse, and only one (`Clematis_viticella`, the original example that
+  motivated this check) improved dramatically (10→1 subgraphs) - but even
+  that picked up 3 new dead-ends, landing it in `mixed`, not a clean win.
+  Lower coverage occasionally fixes fragmentation dramatically but usually
+  does nothing - **not worth scaling as-is** to the remaining ~21 species;
+  a different oatk parameter (e.g. `-a`/arc-coverage or `--max-bubble`,
+  not `-c`/coverage) is probably needed for most of these, or they may
+  need to stay documented as genuinely difficult assemblies.
+- `high_cross_organelle_alignment` showing **zero** change in 10/10
+  attempts, unaffected by any of these fixes, remains real evidence for
+  "some of this is genuine biology, not an assembly defect", not just a
+  guess.
+- `missing_gfa` species mostly still fail to assemble even on retry with
+  default parameters, suggesting a deeper data issue than a simple
+  parameter tweak for those - worth checking raw read volume/quality
+  before just retrying again.
