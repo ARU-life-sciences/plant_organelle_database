@@ -63,22 +63,34 @@ def main():
         resolved = sd.discover_all(data_root, organelle, species_filter=species_filter)
 
         new_rows = []
+        stale_keys = []  # species that HAD a ctg_bed in a prior run but don't now
+                          # (e.g. archived by a promotion that didn't re-annotate) -
+                          # must be purged explicitly, since merge_rows only replaces
+                          # keys present in new_rows and would otherwise leave this
+                          # species' old gene calls in gene_matrix.tsv forever, silently
+                          # feeding a stale core_gene_pct into qc_summary.
         n_computed = n_skipped = n_no_bed = 0
         for r in resolved:
+            key = (r.species, organelle)
             if not r.ctg_bed:
                 n_no_bed += 1
+                if key in existing_keys:
+                    stale_keys.append(key)
                 continue
-            key = (r.species, organelle)
             if io_utils.needs_recompute(key, existing_keys, out_path, Path(r.ctg_bed), args.force):
                 new_rows.extend(rows_for_species(r.species, organelle, r.ctg_bed))
                 n_computed += 1
             else:
                 n_skipped += 1
 
+        if stale_keys and not existing_df.empty:
+            existing_df = existing_df.set_index(KEY_COLS).drop(index=stale_keys, errors="ignore").reset_index()
+
         merged = io_utils.merge_rows(existing_df, new_rows, KEY_COLS, COLUMNS)
         io_utils.atomic_write_tsv(out_path, merged.to_dict("records"), COLUMNS)
         print(f"[info] gene_matrix_{organelle}: computed={n_computed} skipped={n_skipped} "
-              f"no_bed={n_no_bed} total_rows={len(merged)} -> {out_path}", file=sys.stderr)
+              f"no_bed={n_no_bed} purged_stale={len(stale_keys)} total_rows={len(merged)} -> {out_path}",
+              file=sys.stderr)
 
 
 if __name__ == "__main__":
