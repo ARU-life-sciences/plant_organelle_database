@@ -1,14 +1,29 @@
 #!/usr/bin/env python3
 """Build one standardized, hierarchical GFF3 per species, merging the
-three annotation modules by precedence:
+three annotation modules.
 
-1. `trans_splicing` reconstruction (`nad1`/`nad2`/`nad5`/`rps3` only, if a
-   reconstruction with >=1 filled exon exists - partial is still more
-   informative than a single raw fragment).
-2. `editing`'s RNA-editing-corrected single-exon call, if this gene has one.
-3. `denovo_annotation`'s raw best-scoring hit, otherwise (also the only
-   tier for tRNA/rRNA genes - neither of the other two modules touches
-   those gene classes).
+Gene models are built from EVERY denovo_annotation hit, not just the best
+per gene:
+- overlapping hits of a gene collapse to one locus (antisense members -
+  weak reverse-strand model hits - dropped for the strongest hit's strand);
+  tRNA loci are first resolved across names, since one real tRNA is hit
+  by many anticodon models (tRNAscan-SE's identity wins, oatkDB's for CAU);
+- protein-coding and tRNA loci chain into cis-spliced genes (same contig
+  and strand, intron <= MAX_INTRON, each exon continuing the gene model -
+  hmm_from/hmm_to - where the last left off; a second copy restarts it);
+- every remaining locus/chain is a copy: `gene-X`, `gene-X-2`, ...
+  Copies under PARTIAL_COVERAGE of the gene's usual model span are tagged
+  `partial=true`; `copy_number` counts the rest. Extra tRNA copies need
+  tRNAscan-SE and oatkDB to agree (or to be an intron-split chain).
+
+Corrections then claim the loci they were computed on:
+1. `trans_splicing` reconstruction (`nad1`/`nad2`/`nad5`/`rps3`, >=1 filled
+   exon) - unless a cis-spliced model of the same loci has more exons
+   (rps3 is cis-spliced in most plants).
+2. `editing`'s RNA-editing-corrected call, on the single-exon copy holding
+   the hit it corrected (an ORF search over one exon of a cis-spliced gene
+   can't fix that gene's boundaries, so multi-exon copies stay raw).
+3. Everything else is `raw` (also the only tier for tRNA/rRNA).
 
 Which tier won is recorded per gene as `annotation_tier=reconstructed|
 edited|raw` - an explicit confidence signal, not just implicit in which
@@ -20,16 +35,16 @@ GFF3 mechanics used here (see `../README.md` for the full explanation):
   multi-exon feature - it does not require those rows to share a strand or
   seqid, which is exactly what a trans-spliced gene needs).
 - tRNA/rRNA are `gene` -> `tRNA`/`rRNA` directly - no `CDS`/`mRNA` layer,
-  they're not protein-coding.
+  they're not protein-coding - with `exon` children when intron-split.
 - Predicted RNA-editing sites are child `sequence_alteration` features
   under the relevant `CDS` `ID` (a real, general Sequence Ontology term
   for "this position differs from a reference" - a pragmatic choice, not
   a claim that this is THE canonical way to encode RNA editing in GFF3).
-- `phase` (GFF3 column 8) is written as `0` for every `CDS` - a verified
-  guarantee for `editing`/`trans_splicing`-derived exons (their DP only
-  ever emits codon-aligned boundaries by construction) but an unverified
-  *assumption* for tier-3 raw `denovo_annotation`-only calls (HMMER
-  envelope coordinates aren't codon-boundary-enforced) - see README.
+- `phase` (GFF3 column 8) is `0` for `editing`/`trans_splicing`-derived
+  exons - a verified guarantee (their DP only ever emits codon-aligned
+  boundaries by construction). Raw cis-spliced models take each CDS's
+  phase from the exon lengths before it - consistent, but only as exact
+  as HMMER envelope bounds (their mRNA says exon_boundaries=approximate).
 
 Assembly provenance and unitig coordinates (see README):
 - Each ctg gets a `##sequence-region` pragma and a `region` feature
@@ -56,10 +71,11 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 ANALYSIS_DIR = Path(__file__).resolve().parents[2]
@@ -236,37 +252,217 @@ def assemble(pragmas: list[str], regions: list[str], features: list[str]) -> str
     return "\n".join(["##gff-version 3", *pragmas, *body]) + "\n"
 
 
-def best_hit_per_gene(gene_calls: pd.DataFrame) -> pd.DataFrame:
-    if gene_calls.empty:
-        return gene_calls
-    idx = gene_calls.groupby(["species", "organelle", "gene"])["score"].idxmax()
-    return gene_calls.loc[idx]
+MAX_INTRON = {"mito": 8000, "pltd": 4000}  # longest cis intron in the Arabidopsis mito reference: 3511bp
+MODEL_OVERLAP_TOL = 60  # successive exons' HMM ranges may overlap a little at envelope edges
+PARTIAL_COVERAGE = 0.8  # below this share of its gene's usual model span a copy is tagged partial -
+                        # Arabidopsis mito: real copies >= 0.89, fragments/pseudogene pieces <= 0.68
+TRNASCAN_SUPPORT = 35.0  # extra tRNA copies need tRNAscan-SE >= this AND an oatkDB hit; real
+                         # Arabidopsis mito tRNAs score >= 41.5, plastid-derived fragments ~27
+
+
+@dataclass
+class Locus:
+    """One genomic locus of a gene: overlapping hits collapsed (antisense
+    members of the overlap - weak reverse-strand rRNA/tRNA model hits -
+    dropped in favour of the strongest hit's strand)."""
+    contig: str
+    start: int
+    end: int
+    strand: str
+    score: float
+    hmm_from: int | None
+    hmm_to: int | None
+    model_len: int | None
+    hits: list = field(default_factory=list)
+
+
+def hit_strength(h) -> float:
+    """Comparable-enough ranking across sources, used only to pick a strand
+    and a representative within one overlapping cluster: bitscores as-is,
+    barrnap E-values as -log10 (0.0 means below double precision)."""
+    if h.source == "barrnap":
+        return 300.0 if h.score <= 0 else -np.log10(h.score)
+    return float(h.score)
+
+
+def collapse_hits(hits: pd.DataFrame) -> list[Locus]:
+    loci = []
+    for contig, ch in hits.sort_values("start").groupby("contig_id", sort=False):
+        cluster, cluster_end = [], -1
+        for h in list(ch.itertuples()) + [None]:
+            if h is not None and (not cluster or h.start < cluster_end):
+                cluster.append(h)
+                cluster_end = max(cluster_end, h.end)
+                continue
+            best = max(cluster, key=hit_strength)
+            keep = [c for c in cluster if c.strand == best.strand]
+            model = [c for c in keep if c.source == "oatkDB" and pd.notna(c.hmm_from)]
+            loci.append(Locus(contig, min(c.start for c in keep), max(c.end for c in keep), best.strand,
+                              max(float(c.score) for c in model) if model else hit_strength(best),
+                              int(min(c.hmm_from for c in model)) if model else None,
+                              int(max(c.hmm_to for c in model)) if model else None,
+                              int(model[0].model_len) if model else None, keep))
+            if h is not None:
+                cluster, cluster_end = [h], h.end
+    return loci
+
+
+def chain_exons(loci: list[Locus], organelle: str) -> list[list[Locus]]:
+    """Group a protein-coding gene's loci into cis-spliced genes: same
+    contig and strand, intron <= MAX_INTRON, and each exon picking up the
+    gene model where the previous one left off. A second copy restarts
+    the model, so it never extends an existing chain."""
+    def tx_order(l):
+        return (l.contig, l.strand, l.start if l.strand != "-" else -l.end)
+    chains: list[list[Locus]] = []
+    for loc in sorted(loci, key=tx_order):
+        best, best_gap = None, None
+        for chain in chains:
+            last = chain[-1]
+            if last.contig != loc.contig or last.strand != loc.strand or loc.hmm_from is None or last.hmm_to is None:
+                continue
+            gap = loc.start - last.end if loc.strand != "-" else last.start - loc.end
+            if not (0 <= gap <= MAX_INTRON[organelle]):
+                continue
+            if loc.hmm_from < last.hmm_to - MODEL_OVERLAP_TOL or loc.hmm_to <= last.hmm_to:
+                continue
+            if best is None or gap < best_gap:
+                best, best_gap = chain, gap
+        if best is not None:
+            best.append(loc)
+        else:
+            chains.append([loc])
+    return chains
+
+
+def covered_model_bp(spans) -> int:
+    return sum(e - s + 1 for s, e in merge_intervals(sorted(spans)))
+
+
+def expected_model_spans(calls: pd.DataFrame) -> dict[tuple[str, str], float]:
+    """(organelle, gene) -> median across species of the model span that
+    species' oatkDB hits cover. oatkDB models often extend well beyond the
+    CDS (rps12's is 1119 nt for a ~380 bp gene), so model_len understates
+    how complete a hit is; what full-length genes actually cover does not."""
+    o = calls[(calls.source == "oatkDB") & calls.hmm_from.notna()]
+    per_species = o.groupby(["organelle", "gene", "species"]).apply(
+        lambda d: covered_model_bp(zip(d.hmm_from.astype(int), d.hmm_to.astype(int))))
+    return per_species.groupby(level=[0, 1]).median().to_dict()
+
+
+def model_coverage(chain: list[Locus], expected: float | None) -> float | None:
+    spans = [(l.hmm_from, l.hmm_to) for l in chain if l.hmm_from is not None]
+    if not spans or not expected:
+        return None
+    return min(1.0, covered_model_bp(spans) / expected)
+
+
+def resolve_trna_identity(trna_hits: pd.DataFrame) -> pd.DataFrame:
+    """The same tRNA locus is hit by many oatkDB tRNA models (a real trnK
+    also scores as trnI/trnM/trnN/trnQ/trnR/trnT/trnV/trnW...). Cluster
+    overlapping tRNA hits across names and keep one identity per locus:
+    tRNAscan-SE's (anticodon-based) where it called one, else the
+    strongest oatkDB model's. tRNAscan-SE hits stay, relabelled, as
+    support evidence; other oatkDB models' hits go - their model
+    coordinates belong to a different HMM."""
+    keep: dict = {}  # hit index -> resolved name
+    for _, ch in trna_hits.sort_values("start").groupby("contig_id", sort=False):
+        cluster, cluster_end = [], -1
+        for h in list(ch.itertuples()) + [None]:
+            if h is not None and (not cluster or h.start < cluster_end):
+                cluster.append(h)
+                cluster_end = max(cluster_end, h.end)
+                continue
+            ts = [c for c in cluster if c.source == "tRNAscan-SE"]
+            name = max(ts or cluster, key=hit_strength).gene
+            if name == "trnM-CAU":
+                # tRNAscan-SE calls every CAU anticodon Met; oatkDB has
+                # distinct initiator (trnfM) and lysidine (trnI-CAU) models
+                cau = [c for c in cluster if c.source == "oatkDB" and c.gene.endswith("-CAU")]
+                if cau:
+                    name = max(cau, key=hit_strength).gene
+            keep.update({c.Index: name for c in cluster if c.gene == name or c.source == "tRNAscan-SE"})
+            if h is not None:
+                cluster, cluster_end = [h], h.end
+    out = trna_hits.loc[list(keep)]
+    return out.assign(gene=[keep[i] for i in out.index])
+
+
+def trna_supported(copy: dict) -> bool:
+    """Both predictors agree - or it's a near-complete intron-split tRNA
+    chain, which tRNAscan-SE misses (plastid trnA-UGC/trnI-GAU sit in the
+    inverted repeat, so their real second copy looks exactly like this)."""
+    hits = [h for l in copy["loci"] for h in l.hits]
+    if len(copy["loci"]) > 1 and not copy["partial"]:
+        return True
+    return (any(h.source == "oatkDB" for h in hits)
+            and any(h.source == "tRNAscan-SE" and h.score >= TRNASCAN_SUPPORT for h in hits))
+
+
+def merge_intervals(ivs):
+    out = []
+    for s, e in ivs:
+        if out and s <= out[-1][1]:
+            out[-1] = (out[-1][0], max(out[-1][1], e))
+        else:
+            out.append((s, e))
+    return out
 
 
 def gff_attrs(d: dict) -> str:
     return ";".join(f"{k}={v}" for k, v in d.items() if v is not None and v != "")
 
 
-def emit_rna_gene(lines: list[str], contig: str, start: int, end: int, strand: str,
-                   score: float, gene: str, feature: str) -> None:
-    gid = f"gene-{gene}"
-    lines.append("\t".join([contig, "gff_export", "gene", str(start + 1), str(end), f"{score:.3f}", strand, ".",
-                             gff_attrs({"ID": gid, "Name": gene, "annotation_tier": "raw"})]))
-    lines.append("\t".join([contig, "gff_export", feature, str(start + 1), str(end), f"{score:.3f}", strand, ".",
-                             gff_attrs({"ID": f"{feature.lower()}-{gene}", "Parent": gid, "Name": gene})]))
+def copy_attrs(copy: dict) -> dict:
+    cov = copy.get("coverage")
+    return {"copy_number": copy.get("copy_number"),
+            "model_coverage": f"{cov:.2f}" if cov is not None else None,
+            "partial": "true" if copy.get("partial") else None}
 
 
-def emit_protein_coding_gene(lines: list[str], gene: str, tier: str, parts: list[dict],
-                              edits: list[dict], gene_score: float, n_edits_summary: int) -> None:
+def emit_rna_gene(lines: list[str], gene: str, suffix: str, chain: list[Locus], feature: str, copy: dict) -> None:
+    """gene -> tRNA/rRNA, plus exon rows when the RNA is split by an intron
+    (plastid trnK/trnL/trnV/trnI/trnA/trnG carry group II introns).
+    tool_support records which predictors called the locus, so a tRNA kept
+    only because it is the gene's sole locus (no tRNAscan-SE call) stays
+    distinguishable from one both tools agree on."""
+    gid, fid = f"gene-{gene}{suffix}", f"{feature.lower()}-{gene}{suffix}"
+    tools = "+".join(sorted({h.source for l in chain for h in l.hits}))
+    contig, strand = chain[0].contig, chain[0].strand
+    coords = [str(min(l.start for l in chain) + 1), str(max(l.end for l in chain)), f"{copy['score']:.3f}", strand, "."]
+    lines.append("\t".join([contig, "gff_export", "gene", *coords,
+                             gff_attrs({"ID": gid, "Name": gene, "annotation_tier": "raw", **copy_attrs(copy),
+                                        "tool_support": tools})]))
+    lines.append("\t".join([contig, "gff_export", feature, *coords,
+                             gff_attrs({"ID": fid, "Parent": gid, "Name": gene,
+                                        "n_exons": len(chain) if len(chain) > 1 else None})]))
+    if len(chain) > 1:
+        for k, l in enumerate(chain, start=1):
+            lines.append("\t".join([contig, "gff_export", "exon", str(l.start + 1), str(l.end), f"{l.score:.3f}",
+                                     strand, ".", gff_attrs({"ID": f"exon-{gene}{suffix}-{k}", "Parent": fid,
+                                                             "exon_number": k})]))
+
+
+def emit_protein_coding_gene(lines: list[str], gene: str, suffix: str, tier: str, parts: list[dict],
+                              edits: list[dict], gene_score: float, n_edits_summary: int, copy: dict,
+                              phase_from_lengths: bool) -> None:
     """parts: list of {contig, start, end, strand, score, exon_number} in exon order.
     edits: list of {genomic_pos, resulting_aa, [slot]} to attach as sequence_alteration
     children - `slot` (trans_splicing) names the exon, and so the contig, an edit sits on.
 
     A trans-spliced gene's exons can sit on different contigs; its gene/mRNA
     then get one row per contig (same ID - GFF3's discontinuous-feature
-    mechanism), each spanning only that contig's exons."""
-    gene_strand = parts[0]["strand"] if len(parts) == 1 else "."  # mixed-strand for real trans-spliced genes
-    gid, mid, cid = f"gene-{gene}", f"mRNA-{gene}", f"cds-{gene}"
+    mechanism), each spanning only that contig's exons.
+
+    phase_from_lengths: cis-spliced raw models get each CDS's phase from the
+    cumulative length of the exons before it - internally consistent, but
+    only as exact as the HMM-envelope exon boundaries (flagged
+    exon_boundaries=approximate). editing/trans_splicing exons are
+    codon-aligned by construction, so phase 0 there is exact."""
+    strands = {p["strand"] for p in parts}
+    gene_strand = strands.pop() if len(strands) == 1 else "."  # mixed-strand for real trans-spliced genes
+    gid, mid, cid = f"gene-{gene}{suffix}", f"mRNA-{gene}{suffix}", f"cds-{gene}{suffix}"
+    approximate = phase_from_lengths and len(parts) > 1
 
     by_contig: dict[str, list[dict]] = defaultdict(list)
     for p in parts:
@@ -274,13 +470,17 @@ def emit_protein_coding_gene(lines: list[str], gene: str, tier: str, parts: list
     for contig, cparts in by_contig.items():
         span = [str(min(p["start"] for p in cparts) + 1), str(max(p["end"] for p in cparts))]
         lines.append("\t".join([contig, "gff_export", "gene", *span, f"{gene_score:.3f}", gene_strand, ".",
-                                 gff_attrs({"ID": gid, "Name": gene, "annotation_tier": tier})]))
+                                 gff_attrs({"ID": gid, "Name": gene, "annotation_tier": tier, **copy_attrs(copy)})]))
         lines.append("\t".join([contig, "gff_export", "mRNA", *span, f"{gene_score:.3f}", gene_strand, ".",
                                  gff_attrs({"ID": mid, "Parent": gid, "Name": gene,
-                                            "n_exons": len(parts), "n_edits": n_edits_summary})]))
+                                            "n_exons": len(parts), "n_edits": n_edits_summary,
+                                            "exon_boundaries": "approximate" if approximate else None})]))
+    upstream = 0
     for p in parts:
+        phase = (3 - upstream % 3) % 3 if phase_from_lengths else 0
+        upstream += p["end"] - p["start"]
         lines.append("\t".join([p["contig"], "gff_export", "CDS", str(p["start"] + 1), str(p["end"]),
-                                 f"{p['score']:.3f}", p["strand"], "0",
+                                 f"{p['score']:.3f}", p["strand"], str(phase),
                                  gff_attrs({"ID": cid, "Parent": mid, "exon_number": p["exon_number"]})]))
     by_exon = {p["exon_number"]: p for p in parts}
     for i, e in enumerate(edits, start=1):
@@ -288,52 +488,112 @@ def emit_protein_coding_gene(lines: list[str], gene: str, tier: str, parts: list
         exon = by_exon.get(int(e["slot"]), parts[0]) if pd.notna(e.get("slot")) else parts[0]
         lines.append("\t".join([exon["contig"], "gff_export", "sequence_alteration", str(pos + 1), str(pos + 1),
                                  ".", exon["strand"], ".",
-                                 gff_attrs({"ID": f"sa-{gene}-{i}", "Parent": cid,
+                                 gff_attrs({"ID": f"sa-{gene}{suffix}-{i}", "Parent": cid,
                                             "edited_from": "C", "edited_to": "T",
                                             "resulting_aa": e.get("resulting_aa", "")})]))
 
 
-def build_species_gff(sub: pd.DataFrame, editing_calls: pd.DataFrame, editing_edits: pd.DataFrame,
-                       ts_genes: pd.DataFrame, ts_exons: pd.DataFrame, ts_edits: pd.DataFrame) -> list[str]:
+def overlaps(a_contig, a_start, a_end, b_contig, b_start, b_end) -> bool:
+    return a_contig == b_contig and a_start < b_end and b_start < a_end
+
+
+def build_species_gff(hits: pd.DataFrame, organelle: str, editing_calls: pd.DataFrame,
+                       editing_edits: pd.DataFrame, ts_genes: pd.DataFrame, ts_exons: pd.DataFrame,
+                       ts_edits: pd.DataFrame, stats: Counter, expected: dict) -> list[str]:
     """Every table must already be restricted to one species AND one
     organelle - genes like atpA/rpl16/rps3 exist in both genomes, and
     matching on species+gene alone let one organelle's editing call or
-    reconstruction leak into the other's GFF."""
+    reconstruction leak into the other's GFF.
+
+    Every hit is used, not just the best per gene: overlapping hits
+    collapse to one locus, protein-coding loci chain into cis-spliced
+    genes, and every resulting locus/chain is emitted as its own copy
+    (`gene-X`, `gene-X-2`, ...; strongest first)."""
     lines: list[str] = []
+    is_trna = hits.gene.str.startswith("trn")
+    hits = pd.concat([hits[~is_trna], resolve_trna_identity(hits[is_trna])])
 
-    for row in sub.itertuples():
-        gene = row.gene
+    for gene, gh in hits.groupby("gene"):
+        loci = collapse_hits(gh)
+        is_rna = gene.startswith(("trn", "rrn"))
+        models = [[l] for l in loci] if gene.startswith("rrn") else chain_exons(loci, organelle)
+        copies = [{"loci": m, "score": sum(l.score for l in m),
+                   "coverage": model_coverage(m, expected.get((organelle, gene)))} for m in models]
+        for c in copies:
+            c["partial"] = c["coverage"] is not None and c["coverage"] < PARTIAL_COVERAGE
         if gene.startswith("trn"):
-            emit_rna_gene(lines, row.contig_id, row.start, row.end, row.strand, row.score, gene, "tRNA")
-            continue
-        if gene.startswith("rrn"):
-            emit_rna_gene(lines, row.contig_id, row.start, row.end, row.strand, row.score, gene, "rRNA")
-            continue
+            # the strongest locus always stays (a split plastid tRNA tRNAscan
+            # misses must not vanish); further copies need both tools' support
+            copies.sort(key=lambda c: -c["score"])
+            supported = copies[:1] + [c for c in copies[1:] if trna_supported(c)]
+            stats["trna_copies_unsupported_dropped"] += len(copies) - len(supported)
+            copies = supported
 
+        # Corrections come first and claim the loci they were computed on.
+        corrected: list[dict] = []
         if gene in TRANS_SPLICING_GENES:
             g = ts_genes[ts_genes.gene == gene]
             if not g.empty and int(g.iloc[0].n_filled) >= 1:
-                grow = g.iloc[0]
                 exons = ts_exons[ts_exons.gene == gene].sort_values("slot")
                 parts = [{"contig": e.contig, "start": int(e.start), "end": int(e.end), "strand": e.strand,
                           "score": e.score, "exon_number": int(e.slot)} for e in exons.itertuples()]
-                edits = ts_edits[ts_edits.gene == gene].to_dict("records")
-                emit_protein_coding_gene(lines, gene, "reconstructed", parts, edits,
-                                          grow.whole_gene_score, int(grow.whole_gene_n_edits))
-                continue
-
+                claimed = [c for c in copies if any(
+                    overlaps(l.contig, l.start, l.end, p["contig"], p["start"], p["end"])
+                    for l in c["loci"] for p in parts)]
+                if any(len(c["loci"]) > len(parts) for c in claimed):
+                    # e.g. rps3 is cis-spliced in most plants: a 2-exon cis
+                    # model beats a reconstruction that filled only 1 slot
+                    stats["reconstruction_superseded_by_cis_model"] += 1
+                    parts = None
+                else:
+                    copies = [c for c in copies if c not in claimed]
+            if not g.empty and int(g.iloc[0].n_filled) >= 1 and parts is not None:
+                corrected.append({"tier": "reconstructed", "parts": parts,
+                                  "edits": ts_edits[ts_edits.gene == gene].to_dict("records"),
+                                  "score": float(g.iloc[0].whole_gene_score),
+                                  "n_edits": int(g.iloc[0].whole_gene_n_edits), "coverage": None, "partial": False})
         e = editing_calls[editing_calls.gene == gene]
-        if not e.empty:
+        if not corrected and not e.empty:
             erow = e.iloc[0]
-            part = {"contig": row.contig_id, "start": int(erow.corrected_start), "end": int(erow.corrected_end),
-                    "strand": row.strand, "score": erow.score, "exon_number": 1}
-            edits = editing_edits[editing_edits.gene == gene].to_dict("records")
-            emit_protein_coding_gene(lines, gene, "edited", [part], edits, erow.score, int(erow.n_edits))
-            continue
+            # editing corrected the single best-scoring hit; find the copy holding it
+            target = next((c for c in copies if any(
+                l.contig == h.contig_id and l.start <= h.start and h.end <= l.end
+                for l in c["loci"] for h in [gh.loc[gh.score.idxmax()]])), None)
+            if target is not None and len(target["loci"]) == 1:
+                l = target["loci"][0]
+                corrected.append({"tier": "edited", "score": float(erow.score), "n_edits": int(erow.n_edits),
+                                  "parts": [{"contig": l.contig, "start": int(erow.corrected_start),
+                                             "end": int(erow.corrected_end), "strand": l.strand,
+                                             "score": erow.score, "exon_number": 1}],
+                                  "edits": editing_edits[editing_edits.gene == gene].to_dict("records"),
+                                  "coverage": target["coverage"], "partial": target["partial"]})
+                copies.remove(target)
+            elif target is not None:
+                # an ORF search over one exon of a cis-spliced gene can't
+                # correct the gene's boundaries - keep the multi-exon model raw
+                stats["editing_skipped_multi_exon"] += 1
 
-        part = {"contig": row.contig_id, "start": int(row.start), "end": int(row.end),
-                "strand": row.strand, "score": row.score, "exon_number": 1}
-        emit_protein_coding_gene(lines, gene, "raw", [part], [], row.score, 0)
+        ordered = corrected + sorted(copies, key=lambda c: -c["score"])
+        n_full = sum(1 for c in ordered if not c["partial"])
+        for i, c in enumerate(ordered, start=1):
+            c["copy_number"] = n_full
+            suffix = "" if i == 1 else f"-{i}"
+            stats["copies"] += 1
+            stats["partial_copies"] += c["partial"]
+            if is_rna:
+                emit_rna_gene(lines, gene, suffix, c["loci"], "tRNA" if gene.startswith("trn") else "rRNA", c)
+                continue
+            if "tier" in c:
+                emit_protein_coding_gene(lines, gene, suffix, c["tier"], c["parts"], c["edits"], c["score"],
+                                          c["n_edits"], c, phase_from_lengths=False)
+                stats[c["tier"]] += 1
+                continue
+            parts = [{"contig": l.contig, "start": l.start, "end": l.end, "strand": l.strand, "score": l.score,
+                      "exon_number": k} for k, l in enumerate(c["loci"], start=1)]
+            emit_protein_coding_gene(lines, gene, suffix, "raw", parts, [], c["score"], 0, c,
+                                      phase_from_lengths=True)
+            stats["raw"] += 1
+            stats["multi_exon_raw"] += len(parts) > 1
 
     def sort_key(line: str):
         f = line.split("\t")
@@ -358,9 +618,14 @@ def main():
               f"(or pass --gene-calls)", file=sys.stderr)
         sys.exit(1)
     raw = pd.read_csv(raw_path, sep="\t")
+    if "source" not in raw.columns:
+        # a gene_calls.tsv from before the model columns existed: loci still
+        # collapse, but nothing chains into cis-spliced genes without them
+        print(f"[warn] {raw_path} has no source/hmm_from/hmm_to/model_len columns - "
+              f"re-run denovo_annotation/src/04_build_gene_calls.py", file=sys.stderr)
+        raw = raw.assign(source="oatkDB", hmm_from=np.nan, hmm_to=np.nan, model_len=np.nan)
     if species_filter is not None:
         raw = raw[raw.species.isin(species_filter)]
-    raw_best = best_hit_per_gene(raw)
 
     def load(path: Path, columns: list[str]) -> pd.DataFrame:
         # Always returns a DataFrame with `columns` present (empty if the
@@ -391,18 +656,23 @@ def main():
     tables = [editing_calls, editing_edits, ts_genes, ts_exons, ts_edits]
     empty = [t.iloc[0:0] for t in tables]
     split = [{k: g for k, g in t.groupby(["species", "organelle"])} if not t.empty else {} for t in tables]
-    raw_split = {k: g for k, g in raw_best.groupby(["species", "organelle"])}
+    raw_split = {k: g for k, g in raw.groupby(["species", "organelle"])}
+    # from the full table, so a --species-list run gets the same coverages
+    expected = expected_model_spans(pd.read_csv(raw_path, sep="\t") if species_filter is not None else raw) \
+        if "hmm_from" in raw.columns and raw.hmm_from.notna().any() else {}
+    stats: Counter = Counter()
 
     n_written = n_unitig = n_no_fasta = 0
     for organelle in organelles:
-        species_here = sorted(raw_best[raw_best.organelle == organelle].species.unique())
+        species_here = sorted(raw[raw.organelle == organelle].species.unique())
         ctg_fastas = {r.species: r.ctg_fasta for r in
                       sd.discover_all(sd.repo_data_root(ROOT_DIR, organelle), organelle,
                                       species_filter=set(species_here))
                       if r.status == "ok"}
         for species in species_here:
             key = (species, organelle)
-            lines = build_species_gff(raw_split[key], *[s.get(key, e) for s, e in zip(split, empty)])
+            lines = build_species_gff(raw_split[key], organelle, *[s.get(key, e) for s, e in zip(split, empty)],
+                                      stats=stats, expected=expected)
             if not lines:
                 continue
             out_path = out_dir / f"{species}.{organelle}.gff"
@@ -424,6 +694,7 @@ def main():
     print(f"[info] build_gff: {n_written} species -> {out_dir} ({n_unitig} with unitig-level GFF -> "
           f"{unitig_out_dir}; {n_no_fasta} without a resolvable ctg.fasta, no region/unitig layer)",
           file=sys.stderr)
+    print("[info] build_gff: " + " ".join(f"{k}={v}" for k, v in sorted(stats.items())), file=sys.stderr)
 
 
 if __name__ == "__main__":

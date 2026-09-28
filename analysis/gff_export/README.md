@@ -10,19 +10,72 @@ This module builds that file: one standardized, GFF3-spec-correct,
 hierarchical annotation per species, merging all three modules by
 precedence.
 
-## Precedence: which module's call wins, per gene
+## Gene models: every hit, every copy, every exon
 
-1. **`trans_splicing`** - if the gene is one of `nad1`/`nad2`/`nad5`/
-   `rps3` and a reconstruction with >=1 filled exon exists (partial is
-   still more informative than a raw fragment).
-2. **`editing`** - if this gene has an RNA-editing-corrected call.
-3. **`denovo_annotation`** - the raw best-scoring hit, otherwise (also
-   the *only* tier for tRNA/rRNA genes - neither of the other two modules
-   touches those gene classes).
+Until 2026-09-28 this kept only the best-scoring hit per gene, which
+silently dropped 190,077 of 348,663 hits: every second copy (both
+inverted-repeat copies of plastid rrn16/rrn23/ndhB/..., mito repeat
+copies) and every exon but one of every cis-spliced gene (mito nad4/nad7/
+ccmFc/cox2/rpl2, plastid ndhA/ndhB/ycf3/clpP/petB/rpoC1/...). Models are
+now built from all hits, using where each hit lies along its gene's HMM
+(`hmm_from`/`hmm_to`, added to `gene_calls.tsv` from nhmmscan's tblout):
+
+- **Collapse:** a gene's overlapping hits become one locus; opposite-strand
+  members (weak antisense rRNA/tRNA model hits) lose to the strongest
+  hit's strand. tRNA loci are first resolved *across* names - one real
+  trnK is also hit by the trnI/trnM/trnN/trnQ/trnR/trnT/trnV/trnW models -
+  keeping tRNAscan-SE's anticodon-based identity (oatkDB's for CAU, which
+  tRNAscan-SE always calls Met: trnfM and trnI-CAU are distinct genes).
+- **Chain:** protein-coding and tRNA loci on one strand, <= 8 kb (mito) /
+  4 kb (plastid) apart, each picking up the gene model where the previous
+  one left off, are exons of one gene. A second copy restarts the model,
+  so it never extends a chain.
+- **Copies:** everything left is a copy - `gene-X`, `gene-X-2`, ... -
+  strongest first. `model_coverage` is measured against the model span
+  the gene's hits usually cover across the dataset (oatkDB models often
+  run well past the CDS - rps12's is 1119 nt for a ~380 bp gene); under
+  0.8 is `partial=true`, and `copy_number` counts the rest. An extra tRNA
+  copy is kept only if tRNAscan-SE (score >= 35) and oatkDB agree, or it
+  is a near-complete intron-split chain (tRNAscan-SE misses those - the
+  second IR copies of plastid trnA-UGC/trnI-GAU look exactly like that).
+  The strongest locus of every gene is always kept; `tool_support` says
+  which predictors called each tRNA/rRNA.
+
+Checked against references: Arabidopsis mito (GenBank NC_037304) -
+every protein-coding gene's copy count and exon count match (atp6 x2,
+nad4 4 exons, nad7 5, ccmFc/cox2/rpl2/rps3 2) apart from nad1 (the
+trans_splicing result fills 4 of 5 slots), rpl2 (tagged partial - in
+Brassicaceae the mito gene encodes only the N-terminal part) and loci the
+reference leaves unannotated (rps14/rps19/sdh4 pseudogenes, atpA/atp1
+naming); all 22 reference tRNAs recovered with the right copy numbers.
+Arabidopsis plastid - every IR gene x2, ndhA/ndhB/rpl2/rps16/rpoC1/atpF/
+trnK/trnL/trnV/trnA/trnI 2 exons, ycf3/clpP 3; petB/petD/rpl16/trnG-UCC
+come out one exon short because their first exon (6-25 bp) is too short
+for any HMM hit.
+
+Full dataset: 201,364 gene models (34,641 partial), 16,815 raw cis-spliced
+multi-exon models; 2,638 unsupported extra tRNA loci dropped.
+
+## Precedence: which module's correction wins
+
+Corrections claim the loci they were computed on:
+
+1. **`trans_splicing`** - `nad1`/`nad2`/`nad5`/`rps3` with >=1 filled
+   slot, unless a cis-spliced model of the same loci has more exons (672
+   cases, all reconstructions filling only 1-2 slots: rps3 is cis-spliced
+   in most plants, and nad1/nad2/nad5 have cis-spliced exon pairs too).
+   The trade-off there: the chain is `raw`, so that gene loses the
+   reconstruction's edit sites and codon-exact boundaries.
+2. **`editing`** - on the single-exon copy holding the hit it corrected.
+   An ORF search over one exon of a cis-spliced gene can't correct that
+   gene's boundaries, so multi-exon copies stay raw (716 cases).
+3. **`denovo_annotation`** - everything else (and all tRNA/rRNA).
 
 Recorded per gene as `annotation_tier=reconstructed|edited|raw` - an
 explicit confidence signal, not implicit in which script you happened to
-run last.
+run last. Raw multi-exon models take CDS phase from the exon lengths
+before each exon and say `exon_boundaries=approximate` on the mRNA - HMM
+envelope bounds aren't splice sites.
 
 ## How GFF3 actually encodes this (confirmed, not assumed)
 
@@ -48,14 +101,14 @@ real, general term - "this position differs from a reference") as a
 pragmatic, documented choice, not a claim that it's the one definitive
 standard.
 
-**Phase column** (GFF3 field 8, required for `CDS`): written as `0` for
-every `CDS` here. For `editing`/`trans_splicing`-derived exons this is a
-verified *guarantee*, not a computed-and-hoped-for value - both tools'
-DP only ever emits codon-aligned boundaries by construction (see
-`orfedit`/`transsplice`). For tier-3 raw `denovo_annotation`-only calls
-it's an unverified *assumption* - those coordinates are HMMER envelope
-bounds with no codon-boundary enforcement, so treat phase there as
-best-effort, not confirmed.
+**Phase column** (GFF3 field 8, required for `CDS`): `0` for
+`editing`/`trans_splicing`-derived exons, where it is a verified
+*guarantee* - both tools' DP only ever emits codon-aligned boundaries by
+construction (see `orfedit`/`transsplice`). Raw single-exon calls also
+get `0`, and raw cis-spliced models get each exon's phase from the
+lengths of the exons before it; both are best-effort, not confirmed -
+the coordinates are HMMER envelope bounds with no codon-boundary
+enforcement (multi-exon ones say `exon_boundaries=approximate`).
 
 ## A real coordinate bug this caught
 
