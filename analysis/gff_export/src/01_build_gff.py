@@ -9,8 +9,9 @@ per gene:
   tRNA loci are first resolved across names, since one real tRNA is hit
   by many anticodon models (tRNAscan-SE's identity wins, oatkDB's for CAU);
 - protein-coding and tRNA loci chain into cis-spliced genes (same contig
-  and strand, intron <= MAX_INTRON, each exon continuing the gene model -
-  hmm_from/hmm_to - where the last left off; a second copy restarts it);
+  and strand, MIN_INTRON <= intron <= MAX_INTRON, each exon continuing the
+  gene model - hmm_from/hmm_to - where the last left off; a second copy
+  restarts it; a shorter gap merges the pieces into one exon);
 - every remaining locus/chain is a copy: `gene-X`, `gene-X-2`, ...
   Copies under PARTIAL_COVERAGE of the gene's usual model span are tagged
   `partial=true`; `copy_number` counts the rest. Extra tRNA copies need
@@ -41,8 +42,8 @@ GFF3 mechanics used here (see `../README.md` for the full explanation):
   for "this position differs from a reference" - a pragmatic choice, not
   a claim that this is THE canonical way to encode RNA editing in GFF3).
 - `phase` (GFF3 column 8) is `0` for `editing`/`trans_splicing`-derived
-  exons - a verified guarantee (their DP only ever emits codon-aligned
-  boundaries by construction). Raw cis-spliced models take each CDS's
+  exons. For editing's single-exon calls that's exact; for trans_splicing
+  it is NOT - see README ("Known issue"). Raw cis-spliced models take each CDS's
   phase from the exon lengths before it - consistent, but only as exact
   as HMMER envelope bounds (their mRNA says exon_boundaries=approximate).
 
@@ -253,6 +254,8 @@ def assemble(pragmas: list[str], regions: list[str], features: list[str]) -> str
 
 
 MAX_INTRON = {"mito": 8000, "pltd": 4000}  # longest cis intron in the Arabidopsis mito reference: 3511bp
+MIN_INTRON = 250  # a shorter gap between consecutive model pieces is one exon whose HMM hit broke
+                  # (ycf1/ycf2/rpoC2 gaps of 25-200 bp) - organellar group I/II introns are longer
 MODEL_OVERLAP_TOL = 60  # successive exons' HMM ranges may overlap a little at envelope edges
 PARTIAL_COVERAGE = 0.8  # below this share of its gene's usual model span a copy is tagged partial -
                         # Arabidopsis mito: real copies >= 0.89, fragments/pseudogene pieces <= 0.68
@@ -311,7 +314,8 @@ def chain_exons(loci: list[Locus], organelle: str) -> list[list[Locus]]:
     """Group a protein-coding gene's loci into cis-spliced genes: same
     contig and strand, intron <= MAX_INTRON, and each exon picking up the
     gene model where the previous one left off. A second copy restarts
-    the model, so it never extends an existing chain."""
+    the model, so it never extends an existing chain. A gap under
+    MIN_INTRON isn't an intron: the two pieces merge into one exon."""
     def tx_order(l):
         return (l.contig, l.strand, l.start if l.strand != "-" else -l.end)
     chains: list[list[Locus]] = []
@@ -328,7 +332,12 @@ def chain_exons(loci: list[Locus], organelle: str) -> list[list[Locus]]:
                 continue
             if best is None or gap < best_gap:
                 best, best_gap = chain, gap
-        if best is not None:
+        if best is not None and best_gap < MIN_INTRON:
+            last = best[-1]
+            best[-1] = Locus(last.contig, min(last.start, loc.start), max(last.end, loc.end), last.strand,
+                             max(last.score, loc.score), last.hmm_from, loc.hmm_to, last.model_len,
+                             last.hits + loc.hits)
+        elif best is not None:
             best.append(loc)
         else:
             chains.append([loc])

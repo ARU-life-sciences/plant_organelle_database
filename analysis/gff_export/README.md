@@ -26,10 +26,15 @@ now built from all hits, using where each hit lies along its gene's HMM
   trnK is also hit by the trnI/trnM/trnN/trnQ/trnR/trnT/trnV/trnW models -
   keeping tRNAscan-SE's anticodon-based identity (oatkDB's for CAU, which
   tRNAscan-SE always calls Met: trnfM and trnI-CAU are distinct genes).
-- **Chain:** protein-coding and tRNA loci on one strand, <= 8 kb (mito) /
-  4 kb (plastid) apart, each picking up the gene model where the previous
-  one left off, are exons of one gene. A second copy restarts the model,
-  so it never extends a chain.
+- **Chain:** protein-coding and tRNA loci on one strand, 250 bp - 8 kb
+  (mito) / 4 kb (plastid) apart, each picking up the gene model where the
+  previous one left off, are exons of one gene. A second copy restarts the
+  model, so it never extends a chain. A gap under 250 bp is not an intron
+  (organellar group I/II introns are longer) but one exon whose HMM hit
+  broke over a divergent stretch - the pieces merge (this was ~800 bogus
+  "introns" in ycf1/ycf2/rpoC2 before 2026-09-28's fix). Chains in
+  bryophyte atp9/atp1/cox1/cox3/cob/nad9/sdh3 are expected: moss and
+  liverwort mitogenomes carry introns there that angiosperms lack.
 - **Copies:** everything left is a copy - `gene-X`, `gene-X-2`, ... -
   strongest first. `model_coverage` is measured against the model span
   the gene's hits usually cover across the dataset (oatkDB models often
@@ -55,6 +60,21 @@ for any HMM hit.
 
 Full dataset: 201,364 gene models (34,641 partial), 16,815 raw cis-spliced
 multi-exon models; 2,638 unsupported extra tRNA loci dropped.
+
+## Known issue: trans_splicing exon junctions (being fixed)
+
+`trans_splicing`'s reconstructions are not codon-exact at junctions where
+a codon is split between two exons (junction phase 1 or 2 - e.g. nad1
+exons 2/5, nad2 exons 3-5, nad5 exons 2/4, rps3 exon 2). Its template
+builder translates every exon from frame 0, and exons are joined on codon
+boundaries, so the split codon's 1-2 bases are dropped and the joined CDS
+is out of frame downstream. Measured on Arabidopsis (a training genome):
+nad2's five exons are each placed within 2 bp, yet the protein matches
+RefSeq at only 50% of residues (nad5 80%, nad1 61%); tiny exons (nad5
+exon 3, 22 bp; nad1 exon 4, 59 bp) can land on the wrong locus. So
+`annotation_tier=reconstructed` means right exons, approximately right
+boundaries - not exact ones. Phase-aware templates and junction
+refinement in `transsplice` are the fix in progress.
 
 ## Precedence: which module's correction wins
 
@@ -102,9 +122,10 @@ pragmatic, documented choice, not a claim that it's the one definitive
 standard.
 
 **Phase column** (GFF3 field 8, required for `CDS`): `0` for
-`editing`/`trans_splicing`-derived exons, where it is a verified
-*guarantee* - both tools' DP only ever emits codon-aligned boundaries by
-construction (see `orfedit`/`transsplice`). Raw single-exon calls also
+`editing`/`trans_splicing`-derived exons. For `editing`'s single-exon
+calls that is a verified guarantee (orfedit's DP only emits codon-aligned
+boundaries); for `trans_splicing` it is wrong wherever a codon is split
+across a junction - see "Known issue" above. Raw single-exon calls also
 get `0`, and raw cis-spliced models get each exon's phase from the
 lengths of the exons before it; both are best-effort, not confirmed -
 the coordinates are HMMER envelope bounds with no codon-boundary
