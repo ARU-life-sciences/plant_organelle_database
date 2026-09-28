@@ -7,9 +7,10 @@ more of a trans-spliced gene's real exon structure than oatk's bundled
 per-species calling does - see the `nad5` comparison there).
 
 Mito: `/software/team301/OatkDB/viridiplantae_mito_v20250217.fam` (already
-built, hmmpress'd). Plastid: not yet built (see `../README.md`) - species
-requested with `--organelle pltd`/`both` are skipped with a warning, not
-an error, until that exists.
+built, hmmpress'd). Plastid: `viridiplantae_pltd_v20260928.fam`, built via
+`oatkdb` on the `long` queue - see `../README.md`'s plastid-database
+section for the `nquire --http1.0` bug that blocked every earlier attempt
+and how it was fixed.
 
 Same `--jobs`/`--cpu` pattern as `orf_scan/src/02_scan_pfam.py` (several
 `nhmmscan` processes concurrently, each still multi-threaded via `--cpu`) -
@@ -43,7 +44,7 @@ HMM_TO_GFF = shutil.which("hmm_to_gff") or str(Path.home() / ".cargo" / "bin" / 
 
 FAM_PATHS = {
     "mito": "/software/team301/OatkDB/viridiplantae_mito_v20250217.fam",
-    "pltd": "/software/team301/OatkDB/viridiplantae_pltd_v20260927.fam",  # not built yet - see README
+    "pltd": "/software/team301/OatkDB/viridiplantae_pltd_v20260928.fam",
 }
 
 DEFAULT_EVALUE = "1e-5"
@@ -89,7 +90,7 @@ def scan_one(species: str, organelle: str, ctg_fasta: str, fam: str, evalue: str
         return "failed"
     filtered.write_text(filt.stdout)
 
-    togff = subprocess.run([HMM_TO_GFF, str(filtered), "nhmmscan"], capture_output=True, text=True, timeout=120)
+    togff = subprocess.run([HMM_TO_GFF, str(filtered), "nhmmscan", organelle], capture_output=True, text=True, timeout=120)
     if togff.returncode != 0:
         print(f"[warn] hmm_to_gff failed for {species} ({organelle}): {togff.stderr.strip()[:300]}", file=sys.stderr)
         return "failed"
