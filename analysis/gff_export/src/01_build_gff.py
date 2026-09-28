@@ -466,8 +466,9 @@ def emit_protein_coding_gene(lines: list[str], gene: str, suffix: str, tier: str
     phase_from_lengths: cis-spliced raw models get each CDS's phase from the
     cumulative length of the exons before it - internally consistent, but
     only as exact as the HMM-envelope exon boundaries (flagged
-    exon_boundaries=approximate). editing/trans_splicing exons are
-    codon-aligned by construction, so phase 0 there is exact."""
+    exon_boundaries=approximate). A part's own "phase" (trans_splicing's,
+    from transsplice >= 0.2.0) wins; otherwise editing's single exons are
+    codon-aligned by construction, so 0 is exact there."""
     strands = {p["strand"] for p in parts}
     gene_strand = strands.pop() if len(strands) == 1 else "."  # mixed-strand for real trans-spliced genes
     gid, mid, cid = f"gene-{gene}{suffix}", f"mRNA-{gene}{suffix}", f"cds-{gene}{suffix}"
@@ -486,7 +487,10 @@ def emit_protein_coding_gene(lines: list[str], gene: str, suffix: str, tier: str
                                             "exon_boundaries": "approximate" if approximate else None})]))
     upstream = 0
     for p in parts:
-        phase = (3 - upstream % 3) % 3 if phase_from_lengths else 0
+        if p.get("phase") is not None:
+            phase = p["phase"]
+        else:
+            phase = (3 - upstream % 3) % 3 if phase_from_lengths else 0
         upstream += p["end"] - p["start"]
         lines.append("\t".join([p["contig"], "gff_export", "CDS", str(p["start"] + 1), str(p["end"]),
                                  f"{p['score']:.3f}", p["strand"], str(phase),
@@ -544,8 +548,11 @@ def build_species_gff(hits: pd.DataFrame, organelle: str, editing_calls: pd.Data
             g = ts_genes[ts_genes.gene == gene]
             if not g.empty and int(g.iloc[0].n_filled) >= 1:
                 exons = ts_exons[ts_exons.gene == gene].sort_values("slot")
+                # transsplice >= 0.2.0 reports each exon's CDS phase (split codons)
                 parts = [{"contig": e.contig, "start": int(e.start), "end": int(e.end), "strand": e.strand,
-                          "score": e.score, "exon_number": int(e.slot)} for e in exons.itertuples()]
+                          "score": e.score, "exon_number": int(e.slot),
+                          "phase": int(e.phase) if "phase" in exons.columns and pd.notna(e.phase) else None}
+                         for e in exons.itertuples()]
                 claimed = [c for c in copies if any(
                     overlaps(l.contig, l.start, l.end, p["contig"], p["start"], p["end"])
                     for l in c["loci"] for p in parts)]

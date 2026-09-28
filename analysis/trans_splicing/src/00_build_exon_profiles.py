@@ -15,12 +15,19 @@ Two kinds of profile per gene, both written under `../reference/profiles/
   missing an intron entirely (e.g. Beta vulgaris `rps3`) or flagged
   UNRESOLVED (rice `rps3` - a likely assembly artifact, confirmed not a
   transcription error on our end) is simply absent from a slot's training
-  set rather than distorting it. `.threshold` (`min_self_score`) is NOT a
-  guessed cutoff - it's computed by actually running each slot's own
-  training sequences back through `orfedit scan-batch` against the
-  profile just built from them, and taking the minimum real score. Same
-  scoring code path `transsplice` uses at runtime, not a re-derived
-  approximation.
+  set rather than distorting it. `.threshold` is FLOOR_FRACTION of the
+  minimum score of each slot's own training sequences run back through
+  `orfedit scan-batch` against the profile just built from them - the
+  same scoring code path `transsplice` uses at runtime.
+- `exon{N}.frame`: `lead<TAB>trail` - how many bases at the exon's 5'
+  end finish a codon begun in the previous exon, and how many at its 3'
+  end start one the next exon finishes (the modal value across training
+  loci). Exon profiles are built from the exon's *full codons only*,
+  translated in their true frame: translating every exon from its own
+  first base put every exon after a phase-1/2 junction out of frame
+  (nad1 exons 2/5, nad2 exons 3-5, nad5 exons 2/4, rps3 exon 2), and
+  joining exons on codon boundaries then dropped the split codon's bases,
+  frame-shifting the rest of the gene - transsplice adds lead/trail back.
 - `whole_gene.pssm`: one full-length profile per gene, from every
   included locus's curated RefSeq protein (regardless of its own exon
   count - Beta vulgaris' intron-less `rps3` protein is still a real,
@@ -30,6 +37,7 @@ from __future__ import annotations
 
 import csv
 import math
+import os
 import shutil
 import subprocess
 import sys
@@ -50,6 +58,13 @@ AA_ORDER = "ARNDCQEGHILKMFPSTWYV"
 PSEUDOCOUNT = 0.5
 GAP_COLUMN_THRESHOLD = 0.9  # same reasoning/value as editing/00_build_reference_profiles.py
 GENES = ["nad1", "nad2", "nad5", "rps3"]
+# Slot floor = this fraction of the lowest training self-score. With exons
+# translated in frame, self-scores are high (nad5 exon 2: 1013), and a
+# floor at the bare minimum rejected even Arabidopsis's own nad5 exons 1-2
+# (a training genome) whenever the candidate window didn't span the whole
+# exon. 0.5 recovered them with no wrong-locus assignment it didn't
+# already have. Negative self-scores (tiny exons) are kept as-is.
+FLOOR_FRACTION = 0.5
 
 CODON_TABLE = {}
 _bases = "TCAG"
@@ -113,7 +128,10 @@ def load_junctions() -> dict[tuple[str, str, str], dict]:
 
 
 def run_mafft(protein_fasta: Path, out_fasta: Path) -> bool:
+    # a minimal env, but keep TMPDIR: mafft's mktemp otherwise needs a writable /tmp
     env = {"MAFFT_BINARIES": MAFFT_BINARIES_DIR, "PATH": "/usr/bin:/bin"}
+    if os.environ.get("TMPDIR"):
+        env["TMPDIR"] = os.environ["TMPDIR"]
     proc = subprocess.run(
         [MAFFT, "--auto", "--quiet", str(protein_fasta)],
         capture_output=True, text=True, timeout=120, env=env,
@@ -252,6 +270,21 @@ def main() -> None:
         print(f"[info] {gene}: {len(included)} loci, canonical exon count K={k} "
               f"(seen: {dict(n_exons_seen)})", file=sys.stderr)
 
+        # lead/trail per (locus, slot) from the locus's own cumulative exon
+        # lengths - the junction phase, which the translation must respect
+        frames: dict[tuple, dict[int, tuple[int, int]]] = {}
+        for key in included:
+            if junctions.get(key, {}).get("n_exons") != k or not all(n in raw[key] for n in range(1, k + 1)):
+                continue
+            cum, per = 0, {}
+            for n in range(1, k + 1):
+                length = len(raw[key][n])
+                lead = (3 - cum % 3) % 3
+                trail = (cum + length) % 3
+                per[n] = (lead, trail)
+                cum += length
+            frames[key] = per
+
         for slot in range(1, k + 1):
             dna_seqs = {}
             for key in included:
@@ -266,8 +299,10 @@ def main() -> None:
                 # this check).
                 if junctions.get(key, {}).get("n_exons") != k:
                     continue
-                if slot in raw[key]:
-                    dna_seqs[f"{acc}_{locus}"] = raw[key][slot]
+                if slot in raw[key] and key in frames:
+                    lead, trail = frames[key][slot]
+                    seq = raw[key][slot]
+                    dna_seqs[f"{acc}_{locus}"] = seq[lead:len(seq) - trail]
             if len(dna_seqs) < 2:
                 print(f"[warn] {gene} exon{slot}: only {len(dna_seqs)} sequences - skipping", file=sys.stderr)
                 continue
@@ -279,7 +314,10 @@ def main() -> None:
             if min_score is None:
                 print(f"[warn] {gene} exon{slot}: could not compute min_self_score - skipping", file=sys.stderr)
                 continue
-            (gene_dir / f"exon{slot}.threshold").write_text(f"{min_score:.4f}\n")
+            floor = min_score * FLOOR_FRACTION if min_score > 0 else min_score
+            (gene_dir / f"exon{slot}.threshold").write_text(f"{floor:.4f}\n")
+            lead, trail = Counter(frames[key][slot] for key in frames).most_common(1)[0][0]
+            (gene_dir / f"exon{slot}.frame").write_text(f"{lead}\t{trail}\n")
             print(f"[info] {gene} exon{slot}: {len(dna_seqs)} training seqs, "
                   f"min_self_score={min_score:.3f} -> {profile_path.name}", file=sys.stderr)
 
