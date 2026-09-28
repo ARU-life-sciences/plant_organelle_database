@@ -103,12 +103,74 @@ Verified structurally sound, not just eyeballed: every `Parent=` in every
 one of the 14 smoke-test files resolves to a real `ID=` in the same file
 (0 orphan references).
 
-## Not yet run at full-dataset scale / not in `run_all.sh`
+## Assembly provenance and unitig coordinates
 
-Same opt-in precedent as the modules it merges. Depends on
-`denovo_annotation`'s `gene_calls.tsv` existing (mito-only until the
-plastid database gap there is closed) and benefits from `editing`/
-`trans_splicing` having been run first, but degrades gracefully to
-tier-3-only output if they haven't (every upstream table is loaded with
-its expected columns even when the file doesn't exist yet, so nothing
-crashes on a partial pipeline run).
+Every ctg gets a `##sequence-region` pragma and a `region` feature
+recording which linearisation produced it - `resolver=oatk_pathfinder`
+or `resolver=gfatk_resolve` (the `linearize` fallback promoted into
+`data/` by `05_promote_resolve.py`; read straight from the ctg.fasta
+header) - plus GFF3's own `Is_circular=true` where applicable.
+
+Using `unitig_coords`' placement map, every feature also records where it
+sits on the raw assembly-graph unitigs:
+
+```
+ctg000001c ... CDS 442932 443090 + ... exon_number=3;unitig_loc=u72:1107-1265:-
+ctg000001c ... gene 105511 107090 + ... unitig_span=u309,u1593
+```
+
+`unitig_loc` (1-based inclusive, strand relative to the unitig) when the
+feature lies inside one unitig placement; `unitig_span` listing the
+unitigs it crosses when it spans a junction between placements - flagged,
+not guessed (`unitig_span=unplaced` if it sits on ctg sequence no
+verified placement covers). A position inside a link overlap belongs to
+two placements; the one where it's core is preferred.
+
+`results/unitig/<species>.<organelle>.unitig.gff` is the same annotation
+on the unitig sequences themselves (`unitig_coords/results/unitig_fasta/`).
+A junction-crossing feature becomes several rows sharing one `ID` (GFF3's
+discontinuous-feature mechanism, as for multi-exon CDS), each tagged
+`unitig_split=<ctg>:<start>-<end>` with the ctg stretch it came from, and
+CDS phase recomputed per piece. This view collapses repeat copies onto
+one sequence - which is why the ctg-level GFF stays primary - so each
+unitig's `region` row carries `n_ctg_copies` to keep that visible.
+
+For `gfatk_resolve` contigs there is no recorded unitig walk, so
+placements come from exact sequence matching; a match found only after
+trimming the unitig's ends (typically one of several near-identical
+repeat variants) claims only its verified middle.
+
+Verified on a 7-species test set spanning both resolvers, linear and
+circular contigs, cross-contig trans-splicing and an origin-wrapping
+single-unitig genome: every `unitig_loc` and every split piece is
+byte-identical between ctg and unitig sequence (bar SNP/1bp-indel
+differences confined to link overlaps, where the ctg carries one
+neighbour's copy), every split feature's pieces sum to its full length,
+and every `Parent=` resolves in both files.
+
+## Two merge bugs fixed (2026-09-28)
+
+- **Cross-organelle leakage.** Editing calls, edits and
+  `trans_splicing` reconstructions were matched on species + gene only.
+  Genes present in both genomes (`atpA`, `rpl16`, `rps19`, `rps4`,
+  `rps14`, ...) could pick up the *other* organelle's call - 3911 edited
+  gene models in 673 species had the other genome's coordinates and edit
+  sites, and plastid `rps3` could take the mito trans-splicing
+  reconstruction. Every table is now split by species AND organelle
+  before lookup (with organelle matched, all 54278 editing calls
+  correspond exactly to their raw best hit).
+- **Cross-contig trans-spliced genes.** 258 of 3558 reconstructions have
+  exons on more than one contig; the `gene`/`mRNA` row used the first
+  exon's contig but spanned every exon's coordinates, running off the
+  end of the contig. These now get one `gene`/`mRNA` row per contig
+  (shared `ID`), and each edit site sits on its own exon's contig.
+
+## Running
+
+Stage 4 of `denovo_annotation/work/run_full_suite.sh`; not in
+`run_all.sh`. Depends on `denovo_annotation`'s `gene_calls.tsv` and
+benefits from `editing`/`trans_splicing` having been run first, but
+degrades gracefully to tier-3-only output if they haven't (every
+upstream table is loaded with its expected columns even when the file
+doesn't exist yet). The unitig layer needs `unitig_coords` run first and
+is skipped per species when its map is absent.
