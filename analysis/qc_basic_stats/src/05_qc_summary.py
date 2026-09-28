@@ -67,8 +67,15 @@ etc., known for repeat-rich/complex mitogenomes that trip up graph
 heuristics - plus a scatter of others e.g. Phacelia_tanacetifolia with
 353 singleton contigs) have contig_source=="ctg_fasta" but EVERY contig
 is nv=1, with 5+ such contigs (the >=5 floor matches the fragmentation
-threshold's precedent: real multipartite plant mitogenomes are 2-4
-subgenomic circles, so 5+ never-joined pieces isn't plausible biology).
+threshold's precedent).
+
+Only *linear* nv=1 contigs count as unjoined (fixed 2026-09-28). A
+single unitig that closes on itself is a complete circular chromosome,
+and multichromosomal plant mitogenomes are real and can have many
+(Silene conica: >100; in this dataset Bistorta_vivipara 7, the orchids
+Ophrys/Orchis/Gymnadenia/Dactylorhiza 14-17, Impatiens 16) - counting
+those as unjoined had excluded 15 complete mitogenomes from QC-pass and
+from every downstream annotation step.
 has_ctg_fasta is corrected to treat this case as NOT resolved - it's
 functionally identical to Pathfinder producing nothing, just disguised
 by a non-empty file - which automatically folds these species into the
@@ -172,7 +179,10 @@ def aggregate_contig_stats(contig_stats: pd.DataFrame, organelle: str) -> pd.Dat
         resolved = group[group["contig_source"] == "ctg_fasta"]
         any_circular = (resolved["circular"] == "true").any() if not resolved.empty else np.nan
         n_contigs = len(resolved) if not resolved.empty else np.nan
-        pct_unjoined = (resolved["nv"] == 1).mean() if not resolved.empty else np.nan
+        # a single-unitig contig that closes on itself is a complete circle
+        # (multichromosomal mitogenome), not an unjoined graph segment
+        unjoined = (resolved["nv"] == 1) & (resolved["circular"] != "true")
+        pct_unjoined = unjoined.mean() if not resolved.empty else np.nan
         return pd.Series({"contig_source": contig_source, "any_circular": any_circular,
                            "n_contigs": n_contigs, "pct_unjoined_contigs": pct_unjoined})
 
