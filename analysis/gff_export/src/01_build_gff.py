@@ -70,6 +70,7 @@ Output:
 from __future__ import annotations
 
 import argparse
+import csv
 import re
 import sys
 from collections import Counter, defaultdict
@@ -222,16 +223,46 @@ def add_unitig_layer(lines: list[str], ctx: SeqContext) -> tuple[list[str], list
     return ctg_out, unitig_out
 
 
-def ctg_header(ctx: SeqContext, seqids: list[str]) -> tuple[list[str], list[str]]:
+LOW_DEPTH_PATHS = ANALYSIS_DIR / "qc_basic_stats" / "results" / "low_depth_paths.tsv"
+
+
+def load_linearisation_notes() -> dict[str, float]:
+    """species -> embedded low-depth fraction, for mito graphs that
+    qc_basic_stats/src/06_low_depth_paths.py flags: minor configurations
+    (~5-10% depth side paths - recombination products, nuclear copies or
+    artefacts; not yet told apart) mean any single linear/circular reading
+    of the graph is a modelling choice. The unitig-level GFF is then the
+    safer view; the contig-level one is annotated but marked uncertain."""
+    if not LOW_DEPTH_PATHS.exists():
+        return {}
+    with open(LOW_DEPTH_PATHS) as fh:
+        return {r["species"]: float(r["embedded_low_frac"]) for r in csv.DictReader(fh, delimiter="\t")
+                if r.get("flagged") == "True"}
+
+
+def linearisation_comment(frac: float) -> str:
+    return (f"# linearisation uncertain: {frac:.0%} of the mito assembly graph is low-depth side paths "
+            f"(analysis/qc_basic_stats/results/low_depth_paths.tsv) - the contig sequence is one possible "
+            f"reading of the graph; prefer the unitig-level annotation (results/unitig/)")
+
+
+def ctg_header(ctx: SeqContext, seqids: list[str], low_depth_frac: float | None = None) -> tuple[list[str], list[str]]:
     pragmas = [f"##sequence-region {c} 1 {ctx.lengths[c]}" for c in seqids]
+    if low_depth_frac is not None:
+        pragmas.append(linearisation_comment(low_depth_frac))
+    note = {"linearisation": "uncertain", "linearisation_reason": "low_depth_side_paths",
+            "graph_low_depth_frac": f"{low_depth_frac:.3f}"} if low_depth_frac is not None else {}
     regions = ["\t".join([c, "gff_export", "region", "1", str(ctx.lengths[c]), ".", "+", ".",
                           gff_attrs({"ID": f"region-{c}", "resolver": ctx.resolver[c],
-                                     "Is_circular": "true" if ctx.circular[c] else None})]) for c in seqids]
+                                     "Is_circular": "true" if ctx.circular[c] else None, **note})])
+               for c in seqids]
     return pragmas, regions
 
 
-def unitig_header(ctx: SeqContext, unitigs: list[str]) -> tuple[list[str], list[str]]:
+def unitig_header(ctx: SeqContext, unitigs: list[str], low_depth_frac: float | None = None) -> tuple[list[str], list[str]]:
     pragmas = [f"##sequence-region {u} 1 {ctx.unitig_lengths[u]}" for u in unitigs]
+    if low_depth_frac is not None:
+        pragmas.append(linearisation_comment(low_depth_frac))
     regions = ["\t".join([u, "gff_export", "region", "1", str(ctx.unitig_lengths[u]), ".", "+", ".",
                           gff_attrs({"ID": f"region-{u}", "n_ctg_copies": ctx.unitig_copies[u]})])
                for u in unitigs]
@@ -354,7 +385,7 @@ def expected_model_spans(calls: pd.DataFrame) -> dict[tuple[str, str], float]:
     CDS (rps12's is 1119 nt for a ~380 bp gene), so model_len understates
     how complete a hit is; what full-length genes actually cover does not."""
     o = calls[(calls.source == "oatkDB") & calls.hmm_from.notna()]
-    per_species = o.groupby(["organelle", "gene", "species"]).apply(
+    per_species = o.groupby(["organelle", "gene", "species"])[["hmm_from", "hmm_to"]].apply(
         lambda d: covered_model_bp(zip(d.hmm_from.astype(int), d.hmm_to.astype(int))))
     return per_species.groupby(level=[0, 1]).median().to_dict()
 
@@ -678,7 +709,9 @@ def main():
         if "hmm_from" in raw.columns and raw.hmm_from.notna().any() else {}
     stats: Counter = Counter()
 
-    n_written = n_unitig = n_no_fasta = 0
+    n_written = n_unitig = n_no_fasta = n_noted = 0
+    written: set[Path] = set()
+    linearisation_notes = load_linearisation_notes()
     for organelle in organelles:
         species_here = sorted(raw[raw.organelle == organelle].species.unique())
         ctg_fastas = {r.species: r.ctg_fasta for r in
@@ -695,20 +728,36 @@ def main():
             if species not in ctg_fastas:
                 n_no_fasta += 1
                 out_path.write_text("##gff-version 3\n" + "\n".join(lines) + "\n")
+                written.add(out_path)
                 n_written += 1
                 continue
 
             ctx = load_seq_context(Path(ctg_fastas[species]), UNITIG_MAP_DIR / f"{species}.{organelle}.tsv")
             ctg_lines, unitig_lines = add_unitig_layer(lines, ctx)
-            out_path.write_text(assemble(*ctg_header(ctx, list(ctx.lengths)), ctg_lines))
+            low_frac = linearisation_notes.get(species) if organelle == "mito" else None
+            n_noted += low_frac is not None
+            out_path.write_text(assemble(*ctg_header(ctx, list(ctx.lengths), low_frac), ctg_lines))
+            written.add(out_path)
             n_written += 1
             if unitig_lines:
                 unitigs = sorted({l.split("\t", 1)[0] for l in unitig_lines}, key=lambda u: (len(u), u))
-                (unitig_out_dir / f"{species}.{organelle}.unitig.gff").write_text(
-                    assemble(*unitig_header(ctx, unitigs), unitig_lines))
+                unitig_path = unitig_out_dir / f"{species}.{organelle}.unitig.gff"
+                unitig_path.write_text(assemble(*unitig_header(ctx, unitigs, low_frac), unitig_lines))
+                written.add(unitig_path)
                 n_unitig += 1
+    # A full run defines the result set: a GFF from an earlier run for a
+    # species no longer annotated (e.g. dropped from QC-pass, or its contigs
+    # replaced) describes contigs that may not exist any more - remove it.
+    n_stale = 0
+    if species_filter is None:
+        for f in list(out_dir.glob("*.gff")) + list(unitig_out_dir.glob("*.unitig.gff")):
+            if f not in written:
+                f.unlink()
+                n_stale += 1
+    print(f"[info] build_gff: removed {n_stale} stale GFFs from earlier runs", file=sys.stderr)
     print(f"[info] build_gff: {n_written} species -> {out_dir} ({n_unitig} with unitig-level GFF -> "
-          f"{unitig_out_dir}; {n_no_fasta} without a resolvable ctg.fasta, no region/unitig layer)",
+          f"{unitig_out_dir}; {n_no_fasta} without a resolvable ctg.fasta, no region/unitig layer; "
+          f"{n_noted} marked linearisation=uncertain)",
           file=sys.stderr)
     print("[info] build_gff: " + " ".join(f"{k}={v}" for k, v in sorted(stats.items())), file=sys.stderr)
 

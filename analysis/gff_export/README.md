@@ -61,6 +61,27 @@ for any HMM hit.
 Full dataset: 201,364 gene models (34,641 partial), 16,815 raw cis-spliced
 multi-exon models; 2,638 unsupported extra tRNA loci dropped.
 
+## Mito genomes whose linearisation is uncertain
+
+Some mito assembly graphs carry minor configurations: low-depth side
+paths (well under the ~2-fold abundance range of real mitochondrial
+chromosomes - Wu et al. 2015, PNAS 112:10185) embedded in the graph.
+They may be low-abundance recombination products, nuclear copies of
+mitochondrial DNA, or artefacts - not yet told apart (that needs
+read-level evidence: junction-spanning reads, what flanks the side-path
+reads). Any single contig sequence is then one reading of the graph, and
+a gfatk circuit can walk the real genome several times through them.
+
+For the species `qc_basic_stats/src/06_low_depth_paths.py` flags
+(`results/low_depth_paths.tsv`), both GFFs start with a
+`# linearisation uncertain` comment and the contig `region` rows carry
+`linearisation=uncertain;linearisation_reason=low_depth_side_paths;
+graph_low_depth_frac=...`. Prefer the unitig-level GFF for these: it
+annotates the graph's own sequences and doesn't depend on a path choice.
+Gene-free sequence alone is never grounds for the flag - Silene-type
+multichromosomal mitogenomes carry whole gene-free chromosomes at normal
+abundance.
+
 ## Known issue: trans_splicing exon junctions (being fixed)
 
 `trans_splicing`'s reconstructions are not codon-exact at junctions where
