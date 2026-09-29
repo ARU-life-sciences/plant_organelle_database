@@ -25,6 +25,14 @@ uniparentally inherited, so a handful of conserved marker genes is enough
    mito. This is real biology, not a limitation to apologize for — naively
    concatenating exon fragments as if they were one gene would produce a
    wrong tree, so those genes are left out rather than mishandled.
+
+   **Update**: [`../trans_splicing/README.md`](../trans_splicing/README.md)
+   now reconstructs exactly these genes properly (per-species cis/trans
+   junction classification, validated against real GenBank references) —
+   feeding its successfully reconstructed (`complete=True`, decent
+   `whole_gene_score`) genes back into this marker-gene set is the natural
+   next step to recover mito genera this exclusion currently costs, but
+   hasn't been done yet (see that README's "Try this").
 2. **`02_align_genes.py`** — `mafft --auto` per marker gene (cheap: a
    couple dozen short genes, no LSF needed).
 3. **`03_concat_alignment.py`** — concatenates all per-gene alignments

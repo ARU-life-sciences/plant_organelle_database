@@ -21,11 +21,31 @@ This is an ideal resource for short bioinformatics projects in R, Python, or Bas
 - Comparative genomics
 - Data visualisation
 
+## Setup
+
+```bash
+mamba env create -f environment.yml
+conda activate plant_organellar_database
+./install.sh   # this project's own Rust tools (gfatk, orfedit, transsplice, hmm_to_gff, filter_tblout)
+```
+
+`environment.yml` covers every third-party bioinformatics tool the
+pipeline needs (versions pinned to what was actually validated, checked
+via `<tool> --version` on the reference install, not copied from a doc).
+`install.sh` builds this project's own Rust CLI tools via `cargo`, then
+verifies `analysis/common/tool_paths.sh` resolves cleanly. Reference
+databases (oatkDB's mito/plastid gene-family HMMs, `editing`/
+`trans_splicing`'s profile sets) are separate from both — see each
+module's README for what's built and what isn't yet (e.g.
+`denovo_annotation/README.md`'s "Known gap: no plastid database yet").
+
 ## Analysis suite (`analysis/`)
 
 The exercises below are still good starting points, but a lot of this is
 now automated, incremental, and QC-gated across the whole dataset in
-[`analysis/`](analysis/README.md):
+[`analysis/`](analysis/README.md). Two layers:
+
+**Core suite** (run on `data/*.ctg.fasta` / oatk's own gene calls):
 
 - **qc_basic_stats** — is a given assembly actually trustworthy? (Don't
   skip this — see below.)
@@ -37,14 +57,46 @@ now automated, incremental, and QC-gated across the whole dataset in
 - **phylogeny** — a partitioned ML tree per organelle from single-copy
   marker genes.
 - **orf_scan** — non-core ORFs screened against Pfam for transposable
-  element / mitovirus content (opt-in — heavier than the rest, see its
-  README).
+  element / mitovirus content.
+- **topology_plots** — gene-labeled Bandage plots of the assembly graph,
+  for visually triaging QC `fail`/`flag` species.
+- **linearize** — an independent second opinion on path resolution
+  (`gfatk linear`/`gfatk resolve`) for species oatk's own Pathfinder
+  couldn't resolve at all, promoted back into `data/` once validated.
+
+**Deep annotation suite** (new — reconstructs what oatk's targeted gene
+search can't see on its own):
+
+- **denovo_annotation** — calls genes directly (`nhmmscan` against a
+  Viridiplantae-wide family database, `tRNAscan-SE`, `barrnap`),
+  independent of oatk's assembler. Measurably finds more/better gene
+  fragments than oatk's own bundled calls (oatk's default mito database is
+  gymnosperm-trained; most of this dataset isn't gymnosperms) — see its
+  README's validated comparison.
+- **editing** — corrects gene boundaries for post-transcriptional C-to-U
+  RNA editing (routine in plant mitochondria, sparser in plastids),
+  including edits that create/destroy start/stop codons that a DNA-level
+  caller can't see.
+- **trans_splicing** — reconstructs genes whose exons are transcribed
+  separately and spliced together at the RNA level (`nad1`/`nad2`/`nad5`/
+  `rps3` trans-spliced; several more cis-spliced multi-exon genes),
+  validated against real GenBank reference genomes.
+- **unitig_coords** — maps every annotated feature back onto the raw
+  assembly-graph unitigs, not just the resolved contig — needed wherever a
+  gene straddles a repeat copy or a graph junction.
+- **gff_export** — merges all of the above into one standard, hierarchical
+  GFF3 per species, with an explicit `annotation_tier` (`reconstructed`/
+  `edited`/`raw`) so you always know how much correction a given gene call
+  went through.
 
 Every module works on the full ~1250-species dataset by default, but also
 takes a `--species-list` for a mini-project on a handful of species (a
 genus, a family, whatever question you're asking). Run the lightweight
-ones together with `analysis/run_all.sh` — see
-[`analysis/README.md`](analysis/README.md) for usage.
+core-suite ones together with `analysis/run_all.sh` — see
+[`analysis/README.md`](analysis/README.md) for usage. The deep annotation
+suite is new, opt-in, and not yet run at full-dataset scale for every
+module — see each one's README for validated smoke-test numbers before
+trusting a full run.
 
 **Before trusting any of it**: with ~1250 semi-automated assemblies, some
 are empty, fragmented, or otherwise suspect. `analysis/qc_basic_stats`
@@ -52,6 +104,26 @@ computes a `pass`/`flag`/`fail` per species and every other module filters
 against it by default — see
 [`analysis/qc_basic_stats/README.md`](analysis/qc_basic_stats/README.md)
 for what's actually being checked and why.
+
+## Where to start: best data sources for example projects
+
+Picking a species (or genus) to build an exercise around matters — some
+are much better teaching examples than others, for specific reasons:
+
+| project idea | start here | why |
+|---|---|---|
+| **A clean, fully-worked example** — trace one genome end to end (assembly graph → resolved genome → gene calls → GFF3) | `Acer_campestre` (mito) | The worked example in [`gff_export/README.md`](analysis/gff_export/README.md) — real `ccmB` RNA-editing calls and a real `nad2` trans-spliced gene model, already laid out line by line. |
+| **Ground-truth validation** — "how do we know any of this is right?" | `Arabidopsis_thaliana` (mito) | The one species in this dataset with an independently curated RefSeq reference genome (NC_037304.1) to check against — used throughout `trans_splicing`/`editing`/`gff_export` as the actual accuracy benchmark, not a guess. 54/55 real gene features recovered; single-exon edited proteins at 99.5-100% identity. |
+| **Multichromosomal/multipartite mitogenome structure** | `Dactylorhiza_fuchsii` (mito) | 14 real, independently-abundance-verified circular chromosomes — 9 of them match the published DTOL assembly (OZ487954-62) base-for-base. The wider orchid clade (`Ophrys_apifera`, `Orchis_mascula`, `Gymnadenia_conopsea`) shows the same 14-17-circle pattern, good for a comparative angle. |
+| **Why assembly graphs are hard** — repeat-rich, fragmented, then resolved | `Azolla_filiculoides` (mito) | Started as 175 disconnected single-node fragments (oatk's Pathfinder found nothing joinable); `analysis/linearize`'s read-evidence fallback resolved a real 238-segment, 530kb genome. A dramatic, well-documented before/after (see `qc_basic_stats/README.md`'s "unjoined contigs" section and `linearize/README.md`). |
+| **Trans-splicing / discontinuous genes** | any of `nad1`/`nad2`/`nad5`/`rps3` across several angiosperm species | `analysis/trans_splicing` reconstructs these directly; `reconstructed_junctions.tsv` tells you, per species, which junctions are genuinely cis vs. trans-spliced — not inherited from a reference topology. |
+| **RNA editing density/biology** | any mito vs. plastid gene pair, e.g. `nad9` vs. `atpB` | `analysis/editing` gives real predicted edit counts/density per gene; mitochondrial editing runs several-fold denser than plastid — a good comparative exercise. |
+| **Comparative genomics within a genus** | pick your own — every genus with 3+ sequenced species gets its own genus-relative QC baseline (`qc_basic_stats`'s size-outlier check) | Use `--species-list` on any module to restrict to one genus/family. |
+
+For anything not covered here, `analysis/qc_basic_stats/results/qc_summary.tsv`
+is the fastest way to browse: filter to `status=="pass"` for a safe
+default, or deliberately pick `flag`/`fail` species (with their
+`status_reasons`) if the *problem itself* is the teaching point.
 
 ## DNA transfer between mito and plastid
 

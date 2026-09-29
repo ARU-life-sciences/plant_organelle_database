@@ -137,6 +137,64 @@ Output:
 recruited reads, GAFs) - not committed (see `.gitignore`), safe to delete
 once `results/` looks right; a rerun regenerates them.
 
+### Promoting a resolved circuit: two gates, and a real bug this caught
+
+`05_promote_resolve.py` copies a validated circuit into `data/` (so
+`qc_basic_stats`'s `has_ctg_fasta`/`status` actually reflects it), gated
+two ways before that happens:
+
+1. **Coverage gate** (`common/graph_coverage.py`) — the circuit must place
+   at least 90% (plastid) / 70% (mito) of the graph's unique unitig
+   content. A circuit covering less than that is placing a *piece* of the
+   genome, not the whole thing.
+2. **Oatk's-own-result-first check** — before trusting a gfatk circuit at
+   all, re-run Pathfinder on the untouched GFA + oatk's own annotation; if
+   that reproduces oatk's original `.ctg.bed` byte-for-byte, oatk already
+   had the right answer and nothing should be promoted over it.
+
+**Why gate 2 exists**: the first version of this promotion step ("resolved
+a circuit → promote") replaced 44 plastids whose oatk Pathfinder genome
+had actually gone missing on the way into `data/` for an unrelated reason
+(not a real `no_resolved_ctg_fasta` case) — 7 of them replacing a
+136-230kb complete genome with a 34-55kb piece of one. `07_restore_pathfinder.py`
+was built to find and fix this: per candidate species it either **restores**
+oatk's original contigs (regenerated `.ctg.bed` matches the archived one
+exactly — for plastid, keeps only the highest-coverage circle if more than
+one exists, since a second disjoint circle at 8-40x lower coverage is
+another organism's plastid, not part of this genome; for mito, keeps every
+circular contig, since multichromosomal genomes are real), **reverts** to
+oatk's original unjoined pieces if the gfatk circuit covers less than the
+coverage gate above and the original is still archived (fragmented-but-
+complete beats complete-looking-but-partial), or **keeps** the gfatk
+circuit otherwise (the normal case for mito, where Pathfinder only ever
+produced unjoined pieces to begin with — a circuit there is a genuine
+improvement). Superseded gfatk circuits are archived as
+`<prefix>.<organelle>.gfatk_resolve.ctg.fasta` in `superseded/`, same
+never-delete convention as everywhere else in this pipeline.
+
+### Reannotating a promoted species
+
+`06_reannotate_promoted.py` reverse-engineers oatk's own unitig-hit →
+final-contig coordinate transform well enough to generate real `.ctg.bed`
+gene calls for promoted species *whose entire resolved path uses real GFA
+links* (~1/3 of promoted species — the rest have `gfatk resolve`
+bridging gaps with pure read-evidence "candidate edges" that have no
+corresponding GFA overlap to transform coordinates through, and this
+script correctly declines to guess at one). See its own docstring for the
+validation (99.0% exact row-fidelity against the real dataset) and the
+exact scope limitation.
+
+**`analysis/denovo_annotation` is a better answer to the same underlying
+problem** for species where full-dataset-scale annotation matters more
+than annotating specifically the gfatk-resolve promotions: it calls genes
+directly against whatever's actually in `data/` (`nhmmscan`/`tRNAscan-SE`/
+`barrnap`), with no coordinate-transform step and no GFA-link-only
+limitation, so it works uniformly regardless of which resolver produced a
+given contig. Both approaches currently exist; `06_reannotate_promoted.py`
+predates `denovo_annotation` and hasn't been superseded/removed, but a
+`denovo_annotation` run naturally covers the species this script can't
+reach.
+
 ## Resource footprint (per species x organelle, tier 2 only)
 
 Measured directly, not estimated: ~30-65min wall time dominated by

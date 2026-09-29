@@ -8,9 +8,21 @@ students) can use directly.
 
 If you're coming from the `mito_structural_variation` repo: that one runs
 a full from-scratch pipeline (ORFfinder → hmmscan → tRNAscan-SE → barrnap
-→ Infernal) to annotate genes. That's redundant here — oatk's own
-annotation is already gene-family-targeted and good enough for the
-comparative questions this resource is built for.
+→ Infernal) to annotate genes. This module doesn't reimplement that — it
+just reshapes oatk's own calls.
+
+**Update, no longer true that oatk's own calling is "good enough"**: see
+[`../denovo_annotation/README.md`](../denovo_annotation/README.md), which
+runs that same from-scratch approach directly against this dataset and
+**measurably out-performs** oatk's bundled calls for several genes (oatk's
+default mito family database is trained on Acrogymnospermae — gymnosperms
+— and this dataset is overwhelmingly not gymnosperms). Concretely: `nad5`
+oatk finds 1 fragment/species vs. 4 via direct `nhmmscan`; some QC-`pass`
+species have zero oatk calls for `nad1`/`nad2`/`nad5`/`rps3` entirely
+where direct calling finds 4-6 fragments each. This module (`annotation/`)
+is still the right place for a quick, zero-extra-compute reshape of
+what's already in `data/`; `denovo_annotation/` is the better source when
+gene completeness itself matters.
 
 ## What it computes
 
@@ -38,3 +50,11 @@ boundaries, this module simply doesn't extract per-gene FASTAs for genes
 below the single-copy threshold — see
 [`../phylogeny/README.md`](../phylogeny/README.md) for exactly which genes
 that excludes and why it matters for tree-building.
+
+**Update**: [`../trans_splicing/README.md`](../trans_splicing/README.md)
+now does the thing this section says not to guess at — reconstructing
+these genes properly (per-species cis/trans junction classification, not
+inherited from a reference topology), validated against real GenBank
+references. It hasn't been fed back into this module or `phylogeny`'s
+marker-gene set yet (see that README's "Try this" — a real next step, not
+done in this phase), so the exclusion here still stands for now.
