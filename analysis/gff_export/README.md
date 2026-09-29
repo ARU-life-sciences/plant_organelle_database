@@ -101,12 +101,16 @@ refinement in `transsplice` are the fix in progress.
 
 Corrections claim the loci they were computed on:
 
-1. **`trans_splicing`** - `nad1`/`nad2`/`nad5`/`rps3` with >=1 filled
-   slot, unless a cis-spliced model of the same loci has more exons (672
-   cases, all reconstructions filling only 1-2 slots: rps3 is cis-spliced
-   in most plants, and nad1/nad2/nad5 have cis-spliced exon pairs too).
-   The trade-off there: the chain is `raw`, so that gene loses the
-   reconstruction's edit sites and codon-exact boundaries.
+1. **`trans_splicing`** - the genes in `trans_splicing/src/reference_genes.py`
+   (trans-spliced nad1/nad2/nad5/rps3; since 2026-09-29 also cis-spliced
+   nad4/nad7/ccmFc/cox2/rpl2/rps10) with >=1 filled slot, unless a raw
+   chain of the same loci has more exons (the template under-segments
+   that species, e.g. an extra intron). For the cis-spliced genes a
+   reconstruction must also agree with the HMM evidence - every exon
+   overlaps a raw hit for the gene and extends at most 100 bp past it -
+   or the raw chain is kept (Brassicaceae rpl2 is truncated, and a
+   full-length template aligned 573 bp past its end). Either fallback
+   leaves the gene `raw`: no edit sites, approximate boundaries.
 2. **`editing`** - on the single-exon copy holding the hit it corrected.
    An ORF search over one exon of a cis-spliced gene can't correct that
    gene's boundaries, so multi-exon copies stay raw (716 cases).

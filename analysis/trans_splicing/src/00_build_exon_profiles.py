@@ -3,10 +3,11 @@
 
 Source: `../reference/raw/*.fasta` + `junctions.tsv` - real GenBank RefSeq
 mitochondrial genomes (Arabidopsis, Beta vulgaris, maize, rice, Vitis),
-fetched and independently re-verified this session (every exon
-re-translated from its own raw coordinates and checked against the
-curated RefSeq protein - see `../README.md`). Only `nad1`/`nad2`/`nad5`/
-`rps3` are covered.
+fetched and independently re-verified (every exon re-translated from its
+own raw coordinates and checked against the curated RefSeq protein - see
+`../README.md`), plus, for the cis-spliced genes (reference_genes.py),
+six more angiosperm RefSeq mitogenomes fetched and verified the same way
+by 00a_fetch_references.py. Genes: reference_genes.GENES.
 
 Two kinds of profile per gene, both written under `../reference/profiles/
 <gene>/`:
@@ -57,7 +58,8 @@ ORFEDIT = shutil.which("orfedit") or str(Path.home() / ".cargo" / "bin" / "orfed
 AA_ORDER = "ARNDCQEGHILKMFPSTWYV"
 PSEUDOCOUNT = 0.5
 GAP_COLUMN_THRESHOLD = 0.9  # same reasoning/value as editing/00_build_reference_profiles.py
-GENES = ["nad1", "nad2", "nad5", "rps3"]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from reference_genes import GENES  # noqa: E402  (shared with 00a/01/gff_export)
 # Slot floor = this fraction of the lowest training self-score. With exons
 # translated in frame, self-scores are high (nad5 exon 2: 1013), and a
 # floor at the bare minimum rejected even Arabidopsis's own nad5 exons 1-2
@@ -235,13 +237,19 @@ def compute_min_self_score(gene: str, slot: int, dna_seqs: dict[str, str], profi
 
 
 def main() -> None:
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--genes", nargs="+", default=GENES,
+                    help="build only these (default: all). Rebuilding a gene overwrites its whole_gene.pssm, "
+                         "including one 02_bootstrap_refine.py refined from this dataset")
+    args = ap.parse_args()
     WORK_DIR.mkdir(parents=True, exist_ok=True)
     PROFILES_DIR.mkdir(parents=True, exist_ok=True)
 
     raw = load_all_raw_data()
     junctions = load_junctions()
 
-    for gene in GENES:
+    for gene in args.genes:
         loci = [key for key in raw if key[1] == gene]
         included = [key for key in loci if not junctions.get(key, {}).get("excluded", False)]
         excluded = [key for key in loci if key not in included]

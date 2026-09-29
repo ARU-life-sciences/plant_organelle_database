@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Run `transsplice` over every species' `nad1`/`nad2`/`nad5`/`rps3` gene
-calls, reconstructing full-length genes from their scattered per-exon
+"""Run `transsplice` over every species' calls for the genes in
+reference_genes.GENES - trans-spliced (nad1/nad2/nad5/rps3) and, since
+2026-09-29, cis-spliced ones too (transsplice classifies each junction
+cis/trans per species) - reconstructing full-length genes from their per-exon
 `.ctg.bed` hits.
 
 Unlike `editing/01_scan_editing.py` (best-scoring hit only per gene), every
@@ -29,7 +31,8 @@ sys.path.insert(0, str(ANALYSIS_DIR / "common"))
 import species_discovery as sd  # noqa: E402
 
 TRANSSPLICE = shutil.which("transsplice") or str(Path.home() / ".cargo" / "bin" / "transsplice")
-GENES = ["nad1", "nad2", "nad5", "rps3"]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from reference_genes import GENES  # noqa: E402  (shared with 00a/01/gff_export)
 
 
 def build_manifest(gene_calls: pd.DataFrame, species_filter: set | None, profiles_dir: Path) -> list[dict]:

@@ -86,7 +86,13 @@ sys.path.insert(0, str(ANALYSIS_DIR / "common"))
 
 import species_discovery as sd  # noqa: E402
 
-TRANS_SPLICING_GENES = {"nad1", "nad2", "nad5", "rps3"}
+sys.path.insert(0, str(ANALYSIS_DIR / "trans_splicing" / "src"))
+from reference_genes import CIS_SPLICED_MITO, GENES as RECONSTRUCTED_GENES  # noqa: E402
+# a cis-spliced gene's reconstruction must agree with the HMM evidence: every
+# exon overlaps a raw hit for the gene and extends no further than this past it
+# (a full-length template on a lineage-truncated gene - Brassicaceae rpl2 -
+# otherwise aligns on into downstream sequence: 573 bp in Arabidopsis)
+CIS_MAX_EXTENSION = 100
 UNITIG_MAP_DIR = ANALYSIS_DIR / "unitig_coords" / "results" / "unitig_map"
 RESOLVER_RE = re.compile(r"\bresolver=(\S+)")
 CIRCULAR_RE = re.compile(r"\bcircular=(true|false)")
@@ -575,7 +581,7 @@ def build_species_gff(hits: pd.DataFrame, organelle: str, editing_calls: pd.Data
 
         # Corrections come first and claim the loci they were computed on.
         corrected: list[dict] = []
-        if gene in TRANS_SPLICING_GENES:
+        if gene in RECONSTRUCTED_GENES:
             g = ts_genes[ts_genes.gene == gene]
             if not g.empty and int(g.iloc[0].n_filled) >= 1:
                 exons = ts_exons[ts_exons.gene == gene].sort_values("slot")
@@ -587,7 +593,16 @@ def build_species_gff(hits: pd.DataFrame, organelle: str, editing_calls: pd.Data
                 claimed = [c for c in copies if any(
                     overlaps(l.contig, l.start, l.end, p["contig"], p["start"], p["end"])
                     for l in c["loci"] for p in parts)]
-                if any(len(c["loci"]) > len(parts) for c in claimed):
+                raw_loci = [l for c in copies for l in c["loci"]]
+                inconsistent = gene in CIS_SPLICED_MITO and not all(
+                    any(overlaps(l.contig, l.start, l.end, p["contig"], p["start"], p["end"])
+                        and p["start"] >= l.start - CIS_MAX_EXTENSION and p["end"] <= l.end + CIS_MAX_EXTENSION
+                        for l in raw_loci)
+                    for p in parts)
+                if inconsistent:
+                    stats["cis_reconstruction_rejected_inconsistent_with_hits"] += 1
+                    parts = None
+                elif any(len(c["loci"]) > len(parts) for c in claimed):
                     # e.g. rps3 is cis-spliced in most plants: a 2-exon cis
                     # model beats a reconstruction that filled only 1 slot
                     stats["reconstruction_superseded_by_cis_model"] += 1
