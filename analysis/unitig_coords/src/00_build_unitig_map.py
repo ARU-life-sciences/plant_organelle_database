@@ -233,7 +233,10 @@ def build_one(species: str, organelle: str, gfa_path: str, ctg_fasta_path: str,
               map_dir: Path, fasta_dir: Path, force: bool) -> str:
     map_out = map_dir / f"{species}.{organelle}.tsv"
     fasta_out = fasta_dir / f"{species}.{organelle}.unitig.fasta"
-    if not force and map_out.exists() and fasta_out.exists() and map_out.stat().st_size > 0:
+    # a map older than its inputs is stale (e.g. linearize/07_restore_pathfinder
+    # swapped the genome in place) and is rebuilt even without --force
+    if (not force and map_out.exists() and fasta_out.exists() and map_out.stat().st_size > 0
+            and map_out.stat().st_mtime >= max(Path(p).stat().st_mtime for p in (gfa_path, ctg_fasta_path))):
         return "skipped"
 
     segs, overlaps = read_gfa(Path(gfa_path))

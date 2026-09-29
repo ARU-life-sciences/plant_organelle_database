@@ -283,3 +283,13 @@ editing sites), nad2 5/5, rps3 2/2; cox2 falls back to the raw chain
 (its 83 bp exon 2 is below what a profile places reliably) and rpl2 is
 rejected by gff_export's consistency guard (Brassicaceae rpl2 is
 truncated; a full-length template aligned 573 bp past its end).
+
+Full dataset (job 709710, transsplice 0.2.1), complete reconstructions:
+nad1 76%, nad2 75%, nad4 66%, nad5 55%, nad7 68%, ccmFc 69%, cox2 57%,
+rpl2 59%, rps10 81%, rps3 71% of species with the gene. gff_export
+rejected 868 cis reconstructions as inconsistent with the HMM hits:
+mostly slots placed de novo where no hit exists (rpl2, rps10 - often
+lost or nuclear-transferred) and cox2 exon 1 running ~340 bp 5' of the
+hit in ~220 mosses (Sphagnum, Orthotrichaceae, Hypnales), whose cox2
+diverges from the angiosperm template - stage 2b's lineage templates
+would be needed there. In every case the raw chain is kept.
