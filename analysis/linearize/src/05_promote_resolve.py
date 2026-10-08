@@ -71,7 +71,8 @@ SUFFIXES_TO_ARCHIVE = {
 GFA_SUFFIX = {"mito": ".mito.gfa", "pltd": ".pltd.gfa"}
 DATA_DIRNAME = {"mito": "mito", "pltd": "plastid"}
 
-CIRCUIT_RE = re.compile(r"^.+_circuit(?P<circuit>\d+):n_segments=(?P<n_segments>\d+):bp=(?P<bp>\d+)$")
+# gfatk >=0.6.1 appends `:circular=true:path=u13-,u6-,...`; accept any trailing fields.
+CIRCUIT_RE = re.compile(r"^.+_circuit(?P<circuit>\d+):n_segments=(?P<n_segments>\d+):bp=(?P<bp>\d+)(?::.*)?$")
 BUBBLE_ARM_RE = re.compile(r"^bubble_arm:")
 
 

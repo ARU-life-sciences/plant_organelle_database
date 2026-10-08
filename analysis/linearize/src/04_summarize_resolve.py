@@ -2,13 +2,15 @@
 """Build a summary table from completed 03_recruit_and_resolve.sh outputs.
 
 Reads every analysis/linearize/results/resolve/<organelle>/<species>.resolve.fasta
-and parses gfatk resolve's own FASTA headers. Two header shapes seen on real
+and parses gfatk resolve's own FASTA headers. Header shapes seen on real
 output:
   - a resolved circuit:  `>Species.k1001.s31.c80.pltd_circuit1:n_segments=4:bp=153046`
+    (gfatk >=0.6.1 appends `:circular=true:path=u13-,u6-,...`)
   - a bubble arm (an alternative path at a branch point that read evidence
     didn't select for the main circuit, kept for reference with its own read
     support - see `gfatk resolve --help`'s --no-bubble-fasta):
     `>bubble_arm:u50:between=u59-_to_u49-:support_reads=116`
+  - an unresolved segment (gfatk >=0.6.0): `>unresolved_segment:u7:bp=1234`, skipped
 Only circuit headers count toward n_circuits/length_bp; bubble arms are
 counted separately (n_bubble_arms) as an informational complexity signal,
 not treated as unparsed/unexpected.
@@ -30,8 +32,12 @@ from pathlib import Path
 
 ANALYSIS_DIR = Path(__file__).resolve().parents[2]
 
-CIRCUIT_RE = re.compile(r"^.+_circuit(?P<circuit>\d+):n_segments=(?P<n_segments>\d+):bp=(?P<bp>\d+)$")
+# gfatk >=0.6.1 appends `:circular=true:path=u13-,u6-,...`; accept any trailing fields.
+CIRCUIT_RE = re.compile(r"^.+_circuit(?P<circuit>\d+):n_segments=(?P<n_segments>\d+):bp=(?P<bp>\d+)(?::.*)?$")
 BUBBLE_ARM_RE = re.compile(r"^bubble_arm:")
+# gfatk >=0.6.0 writes segments with no evidence linking them to any circuit
+# as `unresolved_segment:<seg>:bp=<len>` records; not circuits, not unexpected.
+UNRESOLVED_RE = re.compile(r"^unresolved_segment:")
 
 COLUMNS = ["species", "organelle", "n_circuits", "n_bubble_arms", "circuit_id", "n_segments", "length_bp"]
 
@@ -48,6 +54,8 @@ def parse_resolve_fasta(path: Path) -> tuple[list[dict], int]:
             header = line[1:].strip()
             if BUBBLE_ARM_RE.match(header):
                 n_bubble_arms += 1
+                continue
+            if UNRESOLVED_RE.match(header):
                 continue
             m = CIRCUIT_RE.match(header)
             if not m:

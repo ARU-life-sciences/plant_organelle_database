@@ -26,7 +26,7 @@ echo "[info] installing this project's own Rust tools via cargo..."
 # gfatk, hmm_to_gff, filter_tblout are already on crates.io; orfedit and
 # transsplice will be once first published (see each repo's README in the
 # meantime - ARU-life-sciences/orfedit, ARU-life-sciences/transsplice).
-cargo install --locked gfatk@0.4.0
+cargo install --locked gfatk@0.6.1
 cargo install --locked hmm_to_gff@0.1.1
 cargo install --locked filter_tblout@0.1.1
 cargo install --locked orfedit@0.1.0
