@@ -1,12 +1,10 @@
 # Conda/mamba environment covering every third-party bioinformatics tool
-# this pipeline depends on. Create with:
-#
-#   mamba env create -f environment.yml
-#   conda activate plant_organellar_database
-#
-# This does NOT cover this project's own Rust tools (gfatk, orfedit,
-# transsplice, hmm_to_gff, filter_tblout) or the reference databases oatkDB
-# builds - see install.sh, which handles both after activating this env.
+# this pipeline depends on, plus the external tools `poa` (the gene-calling/
+# editing/trans-splicing/GFF3-export package this repo's own annotation was
+# retired in favor of - see README.md) needs at full-dataset scale. `poa`
+# itself isn't on bioconda yet (name collision with an unrelated, existing
+# `poa` package - Partial Order Alignment) - see install.sh, which pip
+# installs it from the sibling `plant_organelle_annotator` checkout.
 #
 # Versions pinned to what this pipeline was built and validated against
 # (checked directly via `<tool> --version` on the reference install, not
@@ -34,17 +32,20 @@ dependencies:
   # phylogenetics
   - iqtree=2.4.0
 
-  # organelle gene-family / RNA / rRNA calling (denovo_annotation/)
+  # organelle gene-family / RNA / rRNA calling (poa's denovo_annotation stage)
   - hmmer=3.4
   - trnascan-se=2.0.12
-  - barrnap=0.9
+
+  # assembly graph linearisation/resolution (linearize/) and gene-boundary
+  # correction / spliced-gene reconstruction (poa's editing/trans_splicing
+  # stages)
+  - gfatk=0.6.1
+  - orfedit=0.1.0
+  - transsplice=0.2.1
 
   # assembly graph visualisation (linearize/'s gfatk-resolve fallback tier)
   - bandage=0.9.0
   - graphaligner=1.0.19
-
-  # rust toolchain, to build/install this project's own tools (see install.sh)
-  - rust
 
   - pip
   - pip:

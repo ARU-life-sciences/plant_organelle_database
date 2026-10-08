@@ -1,5 +1,19 @@
 # trans_splicing
 
+> **Retired (2026-10-08).** This module's pipeline code (`src/`) has been
+> removed - spliced-gene reconstruction now runs through the `poa` package
+> (`plant_organelle_annotator`, a sibling checkout; `install.sh` pip
+> installs it). `poa`'s own copy (`src/poa/pipeline/trans_splicing/`) kept
+> developing past what's described below - now 4 trans-spliced + 6
+> cis-spliced genes, not just the set below - see its README there for
+> current docs. Validated before the switch: running `poa` against this
+> dataset's `Arabidopsis_thaliana` reproduced identical gene
+> content/positions/scores to this module's own last run - see the
+> top-level README's "Analysis suite" section. `reference/`/`results/`/
+> `work/` below are untouched; a `poa` run against this data root writes
+> to the same paths. Everything below is kept as a historical record of
+> this module as it stood before the switch.
+
 **The question:** `nad1`, `nad2`, `nad5`, and (occasionally) `rps3` are
 trans-spliced in angiosperm mitochondria - their exons are transcribed as
 separate RNA molecules from genomic loci that can be hundreds of kb apart,

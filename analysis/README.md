@@ -21,14 +21,14 @@ qc_basic_stats  →  annotation  →  ┬─ repeats
 qc_basic_stats  →  orf_scan          (opt-in, not in run_all.sh - see below)
 qc_basic_stats  →  topology_plots    (opt-in, not in run_all.sh - see below)
 qc_basic_stats  →  linearize         (opt-in, not in run_all.sh - see below)
-
-denovo_annotation  →  ┬─ editing         ┬→ gff_export
-                       └─ trans_splicing ┘   ↑
-                       unitig_coords ────────┘
 ```
-(the second block is the "deep annotation" suite — new, opt-in, not in
-`run_all.sh`, and not yet run at full-dataset scale for every module; see
-each README for validated smoke-test numbers before a full run)
+
+Gene calling, RNA editing, trans-splicing and GFF3 export (previously a
+second block here: `denovo_annotation → editing/trans_splicing →
+unitig_coords → gff_export`) are retired in favor of the standalone `poa`
+package — see the top-level README's "Analysis suite" section and each
+retired module's `README.md` (kept as a historical record, pointer to
+`poa`'s current docs at the top).
 
 1. **[qc_basic_stats](qc_basic_stats/README.md)** — is this assembly real
    and complete enough to trust? Per-species graph/contig stats, gene
@@ -74,52 +74,51 @@ each README for validated smoke-test numbers before a full run)
    submission and touches raw read data outside this repo, so it's never
    run implicitly.
 
-### Deep annotation suite (new)
+### Gene calling / editing / splicing / GFF3 export: retired, now `poa`
 
-These go beyond oatk's own targeted gene search — reconstructing gene
-structure oatk's calling can't see on its own (trans-splicing, RNA
-editing), and cross-checking oatk's calls against an independent,
-from-scratch pipeline. All are opt-in, not in `run_all.sh`, and validated
-so far on smoke-test subsets (~14-15 species) plus, for some, a
-full-dataset run — see each README for exactly what's been validated at
-what scale before trusting a full run yourself.
+What used to be a "deep annotation suite" here (9-13:
+`denovo_annotation`, `editing`, `trans_splicing`, `unitig_coords`,
+`gff_export` — gene calling independent of oatk's assembler, RNA-editing
+correction, trans-/cis-spliced gene reconstruction, unitig-coordinate
+mapping, and a merged hierarchical GFF3) is retired as of 2026-10-08 in
+favor of the standalone [`poa`](https://github.com/Euphrasiologist/poa)
+package (`plant_organelle_annotator`; `../install.sh` installs it from a
+sibling checkout since it isn't on bioconda/PyPI yet). Each module's
+`README.md` is still here as a historical record (with a pointer at the
+top to `poa`'s current docs), and `results/`/`work/` are untouched — a
+`poa` run against this data root (`PLANT_ORGANELLE_DATA_ROOT=.`) writes
+to the exact same paths. `poa`'s stage scripts live at
+`python3 -c 'import poa; print(poa.PIPELINE_DIR)'`; see its own README
+for the full stage-by-stage order and `poa run` for a single sample.
 
-9. **[denovo_annotation](denovo_annotation/README.md)** — calls genes
-   directly against the assembled contigs (`nhmmscan` + `tRNAscan-SE` +
-   `barrnap`), independent of oatk's own internal calling. **Validated,
-   not hypothesized**, to find real genes oatk's bundled database misses
-   entirely (oatk's default mito family database is trained on
-   Acrogymnospermae — gymnosperms — and this dataset is overwhelmingly
-   not gymnosperms) — e.g. `nad5`: oatk finds 1 fragment/species, direct
-   `nhmmscan` finds 4, consistently. Its `gene_calls.tsv` is a drop-in
-   alternative anchor for `editing`/`trans_splicing` below
-   (`--gene-calls`).
-10. **[editing](editing/README.md)** — corrects gene boundaries for
-    post-transcriptional C-to-U RNA editing using a purpose-built Rust
-    tool (`orfedit`), including edits that create/destroy start/stop
-    codons a DNA-level caller can't see. Validated: mitochondrial editing
-    density several-fold higher than plastid, matching the literature's
-    expected direction and rough magnitude.
-11. **[trans_splicing](trans_splicing/README.md)** — reconstructs genes
-    whose exons are transcribed separately and spliced at the RNA level
-    (`nad1`/`nad2`/`nad5`/`rps3`, plus several cis-spliced multi-exon
-    genes), using a purpose-built Rust tool (`transsplice`). Validated
-    against 5 real GenBank reference mitogenomes and, independently,
-    against `Arabidopsis_thaliana`'s own oatk-assembled genome in this
-    dataset compared to its curated RefSeq protein — with honestly-reported
-    partial results (some genes reconstruct well, some don't yet, and why).
-12. **[unitig_coords](unitig_coords/README.md)** — maps every annotated
-    feature back onto the raw assembly-graph unitigs, not just the final
-    resolved contig. Needed for `gff_export`'s unitig-level GFF and for
-    QC diagnostics (`qc_basic_stats/src/06_low_depth_paths.py`) that need
-    to reason about the graph directly.
-13. **[gff_export](gff_export/README.md)** — merges oatk's own calls,
-    `denovo_annotation`, `editing`, and `trans_splicing` into one
-    standard, hierarchical GFF3 per species (real `gene`/`mRNA`/`CDS`
-    structure, not flat single-line features), with an explicit
-    `annotation_tier` (`reconstructed`/`edited`/`raw`) per gene so you
-    always know how much correction a call went through. Also emits a
-    unitig-coordinate GFF alongside the contig-coordinate one.
+Validated directly before the switch, not just assumed compatible:
+running `poa` against this dataset's `Arabidopsis_thaliana` reproduced
+identical gene content, positions and scores to this repo's own last run
+(92 mito / 139 plastid genes, same names/coordinates/scores), plus an
+independent RefSeq check (51/51 genes recovered, sane per-gene identity)
+and confirmation that `poa run`'s one-shot output is byte-identical to
+its own stage-by-stage run.
+
+**A real hazard found during that validation, inherited unchanged from
+this repo's own original code (not a `poa` regression) — never pass
+`--species-list` to `denovo_annotation/04_build_gene_calls.py`,
+`editing/01_scan_editing.py` or `trans_splicing/01_reconstruct.py` once
+this data root already has full-dataset results.** All three rebuild
+their aggregate output table (`gene_calls.tsv`, `edited_gene_calls.tsv`/
+`predicted_edits.tsv`, `reconstructed_*.tsv`) from scratch every run,
+scoped to whatever `--species-list` was given — confirmed directly:
+running `04_build_gene_calls.py --species-list` (2 species) against this
+repo's real, already-fully-populated `gene_calls.tsv` (418216 rows)
+overwrote it down to 811 rows for just those two species, silently
+discarding every other species until `git checkout` restored it. The
+upstream per-species stages (`00`-`03` here; the scan stages in
+`editing`/`trans_splicing`) are genuinely incremental (skip-if-exists per
+species file) and safe to scope - it's specifically the final
+table-building step in each of those three modules that isn't. Until
+`poa` gains a real incremental merge for these three scripts, always run
+them unscoped (cheap - they only re-read already-computed per-species
+work, not re-run the actual scan) rather than with `--species-list`,
+whenever this data root has existing full-dataset results to protect.
 
 ## Running it
 

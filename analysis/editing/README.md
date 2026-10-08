@@ -1,5 +1,18 @@
 # editing
 
+> **Retired (2026-10-08).** This module's pipeline code (`src/`) has been
+> removed - RNA-editing-aware ORF correction now runs through the `poa`
+> package (`plant_organelle_annotator`, a sibling checkout; `install.sh`
+> pip installs it). `poa`'s own copy
+> (`src/poa/pipeline/editing/`) kept developing past what's described
+> below - see its README there for current docs. Validated before the
+> switch: running `poa` against this dataset's `Arabidopsis_thaliana`
+> reproduced identical gene content/positions/scores to this module's own
+> last run - see the top-level README's "Analysis suite" section.
+> `results/`/`work/` below are untouched; a `poa` run against this data
+> root writes to the same paths. Everything below is kept as a historical
+> record of this module as it stood before the switch.
+
 **The question:** plant mitochondrial (and, more sparingly, plastid) mRNAs
 undergo extensive post-transcriptional C-to-U RNA editing - including,
 routinely, at start and stop codons. Neither `annotation` (a reshape of

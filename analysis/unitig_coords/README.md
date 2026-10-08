@@ -1,5 +1,19 @@
 # unitig_coords
 
+> **Retired (2026-10-08).** This module's pipeline code (`src/`) has been
+> removed - unitig-coordinate mapping now runs through the `poa` package
+> (`plant_organelle_annotator`, a sibling checkout; `install.sh` pip
+> installs it). `poa`'s own copy (`src/poa/pipeline/unitig_coords/`) kept
+> developing past what's described below, including explicit gfatk ≥0.6
+> `resolve` header compatibility this version never gained - see its
+> README there for current docs. Validated before the switch: running
+> `poa` against this dataset's `Arabidopsis_thaliana` reproduced identical
+> gene content/positions/scores to this module's own last run - see the
+> top-level README's "Analysis suite" section. `results/`/`work/` below
+> are untouched; a `poa` run against this data root writes to the same
+> paths. Everything below is kept as a historical record of this module
+> as it stood before the switch.
+
 **The question:** a resolved `.ctg.fasta` genome doesn't record which raw
 GFA unitigs (in what order, orientation, and copy number) built it —
 that information only exists implicitly in the graph. Anything that wants

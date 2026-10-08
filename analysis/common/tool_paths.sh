@@ -11,11 +11,6 @@
 # matter on this cluster's own un-conda'd interactive/bsub shells.
 
 GFATK="${GFATK:-$(command -v gfatk || echo "${HOME}/.cargo/bin/gfatk")}"
-# orfedit: RNA-editing-tolerant gene boundary corrector (analysis/editing/).
-ORFEDIT="${ORFEDIT:-$(command -v orfedit || echo "${HOME}/.cargo/bin/orfedit")}"
-# transsplice: trans-spliced gene reconstruction (analysis/trans_splicing/) -
-# depends on orfedit as a Rust library, same external-tool pattern otherwise.
-TRANSSPLICE="${TRANSSPLICE:-$(command -v transsplice || echo "${HOME}/.cargo/bin/transsplice")}"
 MINIMAP2="${MINIMAP2:-$(command -v minimap2 || echo /software/team301/minimap2/minimap2)}"
 SAMTOOLS="${SAMTOOLS:-$(command -v samtools || echo /software/team301/samtools/samtools)}"
 SEQKIT="${SEQKIT:-$(command -v seqkit || echo /software/team301/seqkit)}"
@@ -37,16 +32,12 @@ IQTREE2="${IQTREE2:-$(command -v iqtree2 || echo /software/team301/iqtree-2.4.0-
 GFATOOLS="${GFATOOLS:-$(command -v gfatools || echo /software/team301/gfatools/gfatools)}"
 PYTHON3="${PYTHON3:-python3}"
 
-# denovo_annotation/ - oatk-independent core gene calling (nhmmscan against
-# oatkDB's own gene-family databases, decoupled from oatk's assembler) plus
-# tRNA/rRNA calling.
-NHMMSCAN="${NHMMSCAN:-$(command -v nhmmscan || echo /software/team301/hmmer-3.4/src/nhmmscan)}"
-HMM_TO_GFF="${HMM_TO_GFF:-$(command -v hmm_to_gff || echo "${HOME}/.cargo/bin/hmm_to_gff")}"
-FILTER_TBLOUT="${FILTER_TBLOUT:-$(command -v filter_tblout || echo "${HOME}/.cargo/bin/filter_tblout")}"
-TRNASCAN="${TRNASCAN:-$(command -v tRNAscan-SE || echo /software/team301/tRNAscan-SE/tRNAscan-SE)}"
-BARRNAP="${BARRNAP:-$(command -v barrnap || echo /software/team301/barrnap/bin/barrnap)}"
-OATKDB_MITO_FAM="${OATKDB_MITO_FAM:-/software/team301/OatkDB/viridiplantae_mito_v20250217.fam}"
-OATKDB_PLTD_FAM="${OATKDB_PLTD_FAM:-/software/team301/OatkDB/viridiplantae_pltd_v20260928.fam}"
+# Gene calling, RNA editing, trans-splicing and GFF3 export (previously
+# denovo_annotation/editing/trans_splicing/unitig_coords/gff_export here)
+# are handled by the `poa` package now - see README.md's "Analysis suite"
+# section. `poa` resolves its own tools (nhmmscan, nhmmer, tRNAscan-SE,
+# orfedit, transsplice) independently; nothing here needs to know about
+# them.
 
 # Bandage - needs QT_QPA_PLATFORM=offscreen for headless rendering (no Xvfb
 # needed). On this cluster, installed as a self-contained conda env rather
@@ -70,7 +61,7 @@ export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
 # directly for external installs.
 GRAPHALIGNER="${GRAPHALIGNER:-$(command -v GraphAligner || echo /software/treeoflife/shpc/0.1.26/wrapper/quay.io/biocontainers/graphaligner/1.0.19--hdcf5f25_1/bin/GraphAligner)}"
 
-for tool_var in GFATK ORFEDIT TRANSSPLICE MINIMAP2 SAMTOOLS SEQKIT BLASTN MAKEBLASTDB CDHIT_EST MAFFT IQTREE2 GFATOOLS BANDAGE GRAPHALIGNER NHMMSCAN HMM_TO_GFF FILTER_TBLOUT TRNASCAN BARRNAP; do
+for tool_var in GFATK MINIMAP2 SAMTOOLS SEQKIT BLASTN MAKEBLASTDB CDHIT_EST MAFFT IQTREE2 GFATOOLS BANDAGE GRAPHALIGNER; do
   tool_path="${!tool_var}"
   if [[ ! -x "${tool_path}" ]]; then
     echo "[warn] tool_paths.sh: ${tool_var}=${tool_path} is not executable/found" >&2

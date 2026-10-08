@@ -26,18 +26,20 @@ This is an ideal resource for short bioinformatics projects in R, Python, or Bas
 ```bash
 mamba env create -f environment.yml
 conda activate plant_organellar_database
-./install.sh   # this project's own Rust tools (gfatk, orfedit, transsplice, hmm_to_gff, filter_tblout)
+./install.sh   # pip installs poa from the sibling plant_organelle_annotator checkout
 ```
 
 `environment.yml` covers every third-party bioinformatics tool the
 pipeline needs (versions pinned to what was actually validated, checked
-via `<tool> --version` on the reference install, not copied from a doc).
-`install.sh` builds this project's own Rust CLI tools via `cargo`, then
-verifies `analysis/common/tool_paths.sh` resolves cleanly. Reference
+via `<tool> --version` on the reference install, not copied from a doc),
+including `gfatk`/`orfedit`/`transsplice` from bioconda. `install.sh`
+installs `poa` (see "Analysis suite" below) from a sibling checkout —
+it isn't on bioconda/PyPI yet, blocked by a name collision with an
+unrelated, existing `poa` package — then verifies
+`analysis/common/tool_paths.sh` resolves cleanly. `poa`'s own reference
 databases (oatkDB's mito/plastid gene-family HMMs, `editing`/
-`trans_splicing`'s profile sets) are separate from both — see each
-module's README for what's built and what isn't yet (e.g.
-`denovo_annotation/README.md`'s "Known gap: no plastid database yet").
+`trans_splicing`'s profile sets) are bundled with it and prepared on
+first use — nothing to build here.
 
 ## Analysis suite (`analysis/`)
 
@@ -64,39 +66,31 @@ now automated, incremental, and QC-gated across the whole dataset in
   (`gfatk linear`/`gfatk resolve`) for species oatk's own Pathfinder
   couldn't resolve at all, promoted back into `data/` once validated.
 
-**Deep annotation suite** (new — reconstructs what oatk's targeted gene
-search can't see on its own):
+**Gene calling / editing / splicing / GFF3 export — now via `poa`**: what
+used to be this repo's own `denovo_annotation`/`editing`/`trans_splicing`/
+`unitig_coords`/`gff_export` modules (reconstructing what oatk's targeted
+gene search can't see on its own — direct `nhmmscan`+`tRNAscan-SE`+`nhmmer`
+gene calling for both organelles, RNA-editing-aware ORF correction,
+trans-/cis-spliced gene reconstruction, unitig-coordinate mapping, and a
+merged hierarchical GFF3 with an explicit `annotation_tier`) is retired in
+favor of the standalone [`poa`](https://github.com/Euphrasiologist/poa)
+package (`plant_organelle_annotator`, installed by `install.sh`) — see its
+own README for usage (`poa run` for a single sample, or its stage scripts
+against `PLANT_ORGANELLE_DATA_ROOT=.` for a full-dataset batch, same
+`analysis/<module>/{results,work}/` layout as before). Validated directly
+before the switch: running `poa` against this dataset's
+`Arabidopsis_thaliana` reproduced identical gene content, positions and
+scores to this repo's own last run (92 mito / 139 plastid genes), plus an
+independent RefSeq check (51/51 genes recovered). Each retired module's
+`README.md` here is kept as a historical record, with a pointer at the
+top to `poa`'s current docs; `results/`/`work/` are untouched and a `poa`
+run against this data root writes to the same paths.
 
-- **denovo_annotation** — calls genes directly (`nhmmscan` against a
-  Viridiplantae-wide family database, `tRNAscan-SE`, `barrnap`),
-  independent of oatk's assembler. Measurably finds more/better gene
-  fragments than oatk's own bundled calls (oatk's default mito database is
-  gymnosperm-trained; most of this dataset isn't gymnosperms) — see its
-  README's validated comparison.
-- **editing** — corrects gene boundaries for post-transcriptional C-to-U
-  RNA editing (routine in plant mitochondria, sparser in plastids),
-  including edits that create/destroy start/stop codons that a DNA-level
-  caller can't see.
-- **trans_splicing** — reconstructs genes whose exons are transcribed
-  separately and spliced together at the RNA level (`nad1`/`nad2`/`nad5`/
-  `rps3` trans-spliced; several more cis-spliced multi-exon genes),
-  validated against real GenBank reference genomes.
-- **unitig_coords** — maps every annotated feature back onto the raw
-  assembly-graph unitigs, not just the resolved contig — needed wherever a
-  gene straddles a repeat copy or a graph junction.
-- **gff_export** — merges all of the above into one standard, hierarchical
-  GFF3 per species, with an explicit `annotation_tier` (`reconstructed`/
-  `edited`/`raw`) so you always know how much correction a given gene call
-  went through.
-
-Every module works on the full ~1250-species dataset by default, but also
-takes a `--species-list` for a mini-project on a handful of species (a
-genus, a family, whatever question you're asking). Run the lightweight
-core-suite ones together with `analysis/run_all.sh` — see
-[`analysis/README.md`](analysis/README.md) for usage. The deep annotation
-suite is new, opt-in, and not yet run at full-dataset scale for every
-module — see each one's README for validated smoke-test numbers before
-trusting a full run.
+Every core-suite module works on the full ~1250-species dataset by
+default, but also takes a `--species-list` for a mini-project on a
+handful of species (a genus, a family, whatever question you're asking).
+Run the lightweight core-suite ones together with `analysis/run_all.sh`
+— see [`analysis/README.md`](analysis/README.md) for usage.
 
 **Before trusting any of it**: with ~1250 semi-automated assemblies, some
 are empty, fragmented, or otherwise suspect. `analysis/qc_basic_stats`

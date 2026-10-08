@@ -1,5 +1,20 @@
 # denovo_annotation
 
+> **Retired (2026-10-08).** This module's pipeline code (`src/`) has been
+> removed - gene calling now runs through the `poa` package
+> (`plant_organelle_annotator`, a sibling checkout; `install.sh` pip
+> installs it). `poa`'s own copy of this module
+> (`src/poa/pipeline/denovo_annotation/`) kept developing past what's
+> described below - plastid annotation, rRNA via `nhmmer` instead of
+> `barrnap`, gfatk 0.6.x compatibility - see its README there for current
+> docs. Validated before the switch: running `poa` against this dataset's
+> `Arabidopsis_thaliana` reproduced identical gene content/positions/scores
+> to this module's own last run - see the top-level README's "Analysis
+> suite" section. `results/`/`work/` below are untouched; a `poa` run
+> against this data root writes to the same paths. Everything below is
+> kept as a historical record of this module as it stood before the
+> switch.
+
 **The question:** can gene calling for this pipeline stop depending on
 running oatk at all (oatk stays only for assembly - the genome
 graph/contigs), and if so, is that just a decoupling exercise or does it

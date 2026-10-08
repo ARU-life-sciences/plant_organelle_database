@@ -1,5 +1,19 @@
 # gff_export
 
+> **Retired (2026-10-08).** This module's pipeline code (`src/`) has been
+> removed - the merged GFF3 export now runs through the `poa` package
+> (`plant_organelle_annotator`, a sibling checkout; `install.sh` pip
+> installs it). `poa`'s own copy (`src/poa/pipeline/gff_export/`) kept
+> developing past what's described below - see its README there for
+> current docs. Validated before the switch: running `poa` against this
+> dataset's `Arabidopsis_thaliana` reproduced identical gene
+> content/positions/scores to this module's own last run (92 mito / 139
+> plastid genes, same names/coordinates/scores) - see the top-level
+> README's "Analysis suite" section. `ground_truth/`/`results/` below are
+> untouched; a `poa` run against this data root writes to the same paths.
+> Everything below is kept as a historical record of this module as it
+> stood before the switch.
+
 **The question:** `denovo_annotation` produces one combined GFF per
 species, but it's flat - isolated single-line features, no `gene`/`mRNA`/
 `CDS` hierarchy, and it doesn't reflect anything `editing` or
