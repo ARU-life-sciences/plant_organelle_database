@@ -44,6 +44,7 @@ ROOT_DIR = ANALYSIS_DIR.parent
 sys.path.insert(0, str(ANALYSIS_DIR / "common"))
 
 import species_discovery as sd  # noqa: E402
+import io_utils  # noqa: E402
 
 LOW_DEPTH_RATIO = 0.2
 EMBEDDED_MAX_BP = 30_000
@@ -174,12 +175,21 @@ def main():
             "embedded_low_bp", "n_embedded_pieces", "self_contained_low_bp", "embedded_low_frac",
             "assembly_bp_via_low", "assembly_frac_via_low", "flagged"]
     out = ANALYSIS_DIR / "qc_basic_stats" / "results" / "low_depth_paths.tsv"
-    with open(out, "w") as fh:
+    # Always write what this run actually computed to its own path first;
+    # merge_species_scoped_tsv then decides how that relates to what's
+    # already in out (replace entirely if unscoped, species-scoped merge
+    # otherwise - see its docstring for why: a --species-list-scoped run
+    # must never overwrite other species' rows).
+    new_path = ANALYSIS_DIR / "qc_basic_stats" / "work" / "low_depth_paths.new.tsv"
+    new_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(new_path, "w") as fh:
         fh.write("\t".join(cols) + "\n")
         for r in rows:
             fh.write("\t".join(str(r.get(c, "")) for c in cols) + "\n")
+    io_utils.merge_species_scoped_tsv(out, new_path, species_filter)
     n_flag = sum(1 for r in rows if r.get("flagged"))
-    print(f"[info] low_depth_paths: {len(rows)} mito graphs, {n_flag} flagged -> {out}", file=sys.stderr)
+    print(f"[info] low_depth_paths: {len(rows)} mito graphs, {n_flag} flagged "
+          f"({'species-scoped merge' if species_filter else 'full rewrite'}) -> {out}", file=sys.stderr)
 
 
 if __name__ == "__main__":

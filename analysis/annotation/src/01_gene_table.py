@@ -23,6 +23,7 @@ ROOT_DIR = ANALYSIS_DIR.parent
 sys.path.insert(0, str(ANALYSIS_DIR / "common"))
 
 import species_discovery as sd  # noqa: E402
+import io_utils  # noqa: E402
 
 BED_COLS = ["contig_id", "start", "end", "gene", "score", "strand"]
 COLUMNS = ["species", "organelle"] + BED_COLS
@@ -71,9 +72,18 @@ def main():
         print(f"[info] gene_table: {organelle}: {n_used} QC-eligible species with gene calls", file=sys.stderr)
 
     out_path = ANALYSIS_DIR / "annotation" / "results" / "gene_calls.tsv"
+    # Always write what this run actually computed to its own path first;
+    # merge_species_scoped_tsv then decides how that relates to what's
+    # already in out_path (replace entirely if unscoped, species-scoped
+    # merge otherwise - see its docstring for why that distinction matters:
+    # a --species-list-scoped run must never overwrite other species' rows).
     out_df = pd.concat(all_rows, ignore_index=True) if all_rows else pd.DataFrame(columns=COLUMNS)
-    out_df.to_csv(out_path, sep="\t", index=False)
-    print(f"[info] gene_table: {len(out_df)} rows -> {out_path}", file=sys.stderr)
+    new_path = ANALYSIS_DIR / "annotation" / "work" / "gene_calls.new.tsv"
+    new_path.parent.mkdir(parents=True, exist_ok=True)
+    out_df.to_csv(new_path, sep="\t", index=False)
+    io_utils.merge_species_scoped_tsv(out_path, new_path, species_filter)
+    print(f"[info] gene_table: {len(out_df)} rows "
+          f"({'species-scoped merge' if species_filter else 'full rewrite'}) -> {out_path}", file=sys.stderr)
 
 
 if __name__ == "__main__":
