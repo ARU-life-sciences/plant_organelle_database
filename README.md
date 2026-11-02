@@ -41,6 +41,53 @@ databases (oatkDB's mito/plastid gene-family HMMs, `editing`/
 `trans_splicing`'s profile sets) are bundled with it and prepared on
 first use — nothing to build here.
 
+## Keeping the dataset current
+
+This dataset is a snapshot, not a live feed: `meta/file.txt` (every
+species' raw PacBio read paths, scanned from DTOL's live archive at
+`/data/tol/data/darwin`) was last generated 2026-02-10 and never
+refreshed since — DTOL plant genomes released after that date aren't in
+`data/` at all yet. Two scripts bring it up to date and keep it that way:
+
+- **`src/10_update_from_darwin.sh`** — rescans the DTOL archive (a full
+  rescan every time, by design, so it reflects current reality rather
+  than accumulating stale entries), diffs against the previous manifest
+  to log what's new (`logs/new_species_<timestamp>.txt`), then runs
+  `src/02_submit_oatk_missing_mito.sh` — already idempotent, it skips any
+  species with both a mito and a plastid assembly already in `data/`, so
+  it's safe to run against the whole manifest every time. Submits LSF
+  jobs and exits; doesn't wait for them.
+- **`src/11_process_new_assemblies.sh`** — moves whatever's finished
+  assembling into `data/{mito,plastid}/` (`src/03_move_assemblies.sh`),
+  then submits the core analysis suite (`analysis/run_all.sh
+  --organelle both`) as one LSF job. Safe to run daily even when nothing
+  new has finished: the move step only moves files that already exist
+  (so a still-running species just gets picked up on a later run, with no
+  corruption risk — `mv` on one filesystem is a rename, not a copy), and
+  `run_all.sh` is itself incremental (see `analysis/common/io_utils.py`),
+  so it only actually recomputes species that are new or changed, not the
+  whole dataset.
+
+Neither script runs the `poa`-based deep annotation suite or the opt-in
+core-suite modules (`orf_scan`, `topology_plots`, `linearize`) — those
+stay a deliberate, manual decision per batch of new species (real LSF
+compute, including `poa`'s own heavier stages, and re-running `linearize`
+touches `data/` via its promotion step), not something cron decides on
+its own.
+
+Suggested crontab (not installed — review and add yourself with
+`crontab -e`; **requires the real `plant_organellar_database` conda env
+from "Setup" above to actually exist first**, since cron runs with a
+minimal environment and these scripts don't activate one themselves):
+
+```cron
+# plant_organellar_database: pull new DTOL species + submit assemblies, Sundays 02:00
+0 2 * * 0 cd /lustre/scratch122/tol/teams/blaxter/users/mb39/plant_organellar_database && conda run -n plant_organellar_database src/10_update_from_darwin.sh
+
+# plant_organellar_database: move finished assemblies + refresh core analysis, daily 04:00
+0 4 * * * cd /lustre/scratch122/tol/teams/blaxter/users/mb39/plant_organellar_database && conda run -n plant_organellar_database src/11_process_new_assemblies.sh
+```
+
 ## Analysis suite (`analysis/`)
 
 The exercises below are still good starting points, but a lot of this is
