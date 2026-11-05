@@ -106,15 +106,39 @@ while IFS=$'\t' read -r sp rest; do
 
   prefix="${sp}.k${K}.s${S}.c${COVERAGE}"
 
-  # memory request (keep your 100GB for now)
-  mbMem=100000
+  # Size-tiered resource request. Calibrated 2026-11-02 against LSF's own
+  # "Resource usage summary" for 15 already-completed species: actual max
+  # memory tracks selected-input size at roughly 5-9x (e.g. 1.81GB->11.6GB,
+  # 7.11GB->53.7GB, 14.51GB->98.8GB used), while a blanket 100GB/20-core ask
+  # for every species (median actual use ~40GB) was starving jobs of the
+  # increasingly scarce "whole free host with 20 cores + 100GB" combination
+  # on a busy shared normal queue.
+  #
+  # Top tier bumped 100GB->130GB on 2026-11-05: of the first 44 species
+  # submitted at >10GB input (then capped at 100GB), 15 (34%) were
+  # TERM_MEMLIMIT-killed right around 100-103GB with no size-within-tier
+  # pattern distinguishing them from the 29 that finished under 100GB -
+  # it's real variance (repeat content etc.), not something a size
+  # sub-split can predict, so the cap itself needed headroom instead.
+  #
+  # Compare in bytes, not GB-truncated-to-int, so e.g. a 2.9GB input isn't
+  # silently rounded down into the <=2GB tier.
+  if (( total <= 2*1024*1024*1024 )); then
+    cores=6;  mbMem=24000
+  elif (( total <= 5*1024*1024*1024 )); then
+    cores=10; mbMem=48000
+  elif (( total <= 10*1024*1024*1024 )); then
+    cores=16; mbMem=80000
+  else
+    cores=20; mbMem=130000
+  fi
 
   # Build oatk command
   cmd=(
     "${OATK}"
     -k "${K}"
     -c "${COVERAGE}"
-    -t 20
+    -t "${cores}"
     --nhmmscan "${NHMMSCAN}"
     -m "${MITO_FAM}"
     -p "${PLTD_FAM}"
@@ -131,14 +155,14 @@ while IFS=$'\t' read -r sp rest; do
   fi
 
   # Submit
-  bsub -n 20 -q normal \
+  bsub -n "${cores}" -q normal \
     -R"span[hosts=1] select[mem>${mbMem}] rusage[mem=${mbMem}]" \
     -M"${mbMem}" \
     -o "${LOGDIR}/${sp}.out" \
     -e "${LOGDIR}/${sp}.err" \
     "$(printf "%q " "${cmd[@]}")"
 
-  echo "[SUBMITTED] ${sp}  files=${#selected[@]}  total_bytes=${total}"
+  echo "[SUBMITTED] ${sp}  files=${#selected[@]}  total_bytes=${total}  tier=(cores=${cores},mem=${mbMem}MB)"
   ((submitted+=1))
 
 done < "${tmp}"
