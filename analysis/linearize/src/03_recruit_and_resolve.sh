@@ -79,8 +79,12 @@ while IFS=$'\t' read -r species organelle gfa; do
   # still queued/running - checking the output file alone isn't enough,
   # since an in-flight job hasn't written it yet. Caught this exact bug
   # directly: an early run submitted 35 real duplicate jobs this way.
+  # bjobs -J exits 0 even when it reports "is not found" (LSF quirk on this
+  # farm), so the exit-code check this used to use was always true - it
+  # silently treated every species as already-running. Match the actual
+  # text instead.
   JOB_NAME="linearize_resolve.${species}.${organelle}"
-  if bjobs -J "${JOB_NAME}" >/dev/null 2>&1; then
+  if bjobs -J "${JOB_NAME}" 2>&1 | grep -qv "is not found"; then
     echo "[SKIP] ${species} (${organelle}): already queued/running as ${JOB_NAME}"
     ((skipped+=1))
     continue
