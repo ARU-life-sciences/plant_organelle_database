@@ -4,8 +4,8 @@
 ctg000001c	gff_export	region	1	453736	.	+	.	ID=region-ctg000001c;resolver=gfatk_resolve;Is_circular=true;linearisation=uncertain;linearisation_reason=low_depth_side_paths;graph_low_depth_frac=0.137
 ctg000001c	gff_export	gene	3	83	31.100	+	.	ID=gene-rrn18-6;Name=rrn18;annotation_tier=raw;copy_number=0;model_coverage=0.03;partial=true;tool_support=oatkDB
 ctg000001c	gff_export	rRNA	3	83	31.100	+	.	ID=rrna-rrn18-6;Parent=gene-rrn18-6;Name=rrn18
-ctg000001c	gff_export	gene	2673	415323	1632.320	.	.	ID=gene-rps3;Name=rps3;annotation_tier=reconstructed;copy_number=2
-ctg000001c	gff_export	mRNA	2673	415323	1632.320	.	.	ID=mRNA-rps3;Parent=gene-rps3;Name=rps3;n_exons=2;n_edits=13
+ctg000001c	gff_export	gene	2673	415323	1632.320	.	.	ID=gene-rps3;Name=rps3;annotation_tier=reconstructed;exception=trans-splicing;copy_number=2
+ctg000001c	gff_export	mRNA	2673	415323	1632.320	.	.	ID=mRNA-rps3;Parent=gene-rps3;Name=rps3;n_exons=2;n_edits=13;junctions=trans;exception=trans-splicing
 ctg000001c	gff_export	CDS	2673	2725	-1.524	-	0	ID=cds-rps3;Parent=mRNA-rps3;exon_number=1
 ctg000001c	gff_export	sequence_alteration	2676	2676	.	-	.	ID=sa-rps3-1;Parent=cds-rps3;edited_from=C;edited_to=T;resulting_aa=F
 ctg000001c	gff_export	sequence_alteration	2677	2677	.	-	.	ID=sa-rps3-2;Parent=cds-rps3;edited_from=C;edited_to=T;resulting_aa=F
@@ -35,8 +35,8 @@ ctg000001c	gff_export	gene	74696	74839	47.400	-	.	ID=gene-rrn26-10;Name=rrn26;an
 ctg000001c	gff_export	rRNA	74696	74839	47.400	-	.	ID=rrna-rrn26-10;Parent=gene-rrn26-10;Name=rrn26
 ctg000001c	gff_export	gene	75001	75236	88.600	-	.	ID=gene-rrn26-5;Name=rrn26;annotation_tier=raw;copy_number=3;model_coverage=0.41;partial=true;tool_support=oatkDB
 ctg000001c	gff_export	rRNA	75001	75236	88.600	-	.	ID=rrna-rrn26-5;Parent=gene-rrn26-5;Name=rrn26
-ctg000001c	gff_export	gene	79697	362792	1742.720	.	.	ID=gene-nad2;Name=nad2;annotation_tier=reconstructed;copy_number=1
-ctg000001c	gff_export	mRNA	79697	362792	1742.720	.	.	ID=mRNA-nad2;Parent=gene-nad2;Name=nad2;n_exons=5;n_edits=19
+ctg000001c	gff_export	gene	79697	362792	1742.720	.	.	ID=gene-nad2;Name=nad2;annotation_tier=reconstructed;exception=trans-splicing;copy_number=1
+ctg000001c	gff_export	mRNA	79697	362792	1742.720	.	.	ID=mRNA-nad2;Parent=gene-nad2;Name=nad2;n_exons=5;n_edits=19;junctions=cis,trans,cis,cis;exception=trans-splicing
 ctg000001c	gff_export	CDS	79697	79849	197.770	+	0	ID=cds-nad2;Parent=mRNA-nad2;exon_number=1
 ctg000001c	gff_export	sequence_alteration	79722	79722	.	+	.	ID=sa-nad2-1;Parent=cds-nad2;edited_from=C;edited_to=T;resulting_aa=F
 ctg000001c	gff_export	gene	79810	79941	55.000	-	.	ID=gene-atp9-8;Name=atp9;annotation_tier=raw;copy_number=0;model_coverage=0.18;partial=true
@@ -178,8 +178,8 @@ ctg000001c	gff_export	CDS	293295	293427	76.300	+	2	ID=cds-nad4;Parent=mRNA-nad4;
 ctg000001c	gff_export	gene	296988	298569	515.900	-	.	ID=gene-nad2-4;Name=nad2;annotation_tier=raw;copy_number=1;model_coverage=0.33;partial=true
 ctg000001c	gff_export	mRNA	296988	298569	515.900	-	.	ID=mRNA-nad2-4;Parent=gene-nad2-4;Name=nad2;n_exons=2;n_edits=0;exon_boundaries=approximate
 ctg000001c	gff_export	CDS	296988	297424	419.000	-	2	ID=cds-nad2-4;Parent=mRNA-nad2-4;exon_number=2
-ctg000001c	gff_export	gene	297539	405170	1152.835	.	.	ID=gene-nad1;Name=nad1;annotation_tier=reconstructed;copy_number=1
-ctg000001c	gff_export	mRNA	297539	405170	1152.835	.	.	ID=mRNA-nad1;Parent=gene-nad1;Name=nad1;n_exons=5;n_edits=17
+ctg000001c	gff_export	gene	297539	405170	1152.835	.	.	ID=gene-nad1;Name=nad1;annotation_tier=reconstructed;exception=trans-splicing;copy_number=1
+ctg000001c	gff_export	mRNA	297539	405170	1152.835	.	.	ID=mRNA-nad1;Parent=gene-nad1;Name=nad1;n_exons=5;n_edits=17;junctions=trans,cis,trans,trans;exception=trans-splicing
 ctg000001c	gff_export	CDS	297539	297925	475.048	+	0	ID=cds-nad1;Parent=mRNA-nad1;exon_number=1
 ctg000001c	gff_export	sequence_alteration	297540	297540	.	+	.	ID=sa-nad1-1;Parent=cds-nad1;edited_from=C;edited_to=T;resulting_aa=M
 ctg000001c	gff_export	sequence_alteration	297705	297705	.	+	.	ID=sa-nad1-2;Parent=cds-nad1;edited_from=C;edited_to=T;resulting_aa=L

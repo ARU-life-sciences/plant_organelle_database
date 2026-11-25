@@ -2,7 +2,7 @@
 ##sequence-region u25 1 196229
 u25	gff_export	region	1	196229	.	+	.	ID=region-u25;n_ctg_copies=1
 u25	gff_export	gene	2513	8924	1510.417	+	.	ID=gene-nad7;Name=nad7;annotation_tier=reconstructed;copy_number=1;unitig_loc=u25:2513-8924:+
-u25	gff_export	mRNA	2513	8924	1510.417	+	.	ID=mRNA-nad7;Parent=gene-nad7;Name=nad7;n_exons=5;n_edits=29;unitig_loc=u25:2513-8924:+
+u25	gff_export	mRNA	2513	8924	1510.417	+	.	ID=mRNA-nad7;Parent=gene-nad7;Name=nad7;n_exons=5;n_edits=29;junctions=cis,cis,cis,cis;unitig_loc=u25:2513-8924:+
 u25	gff_export	CDS	2513	2655	185.696	+	0	ID=cds-nad7;Parent=mRNA-nad7;exon_number=1;unitig_loc=u25:2513-2655:+
 u25	gff_export	sequence_alteration	2550	2550	.	+	.	ID=sa-nad7-4;Parent=cds-nad7;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u25:2550-2550:+
 u25	gff_export	sequence_alteration	2589	2589	.	+	.	ID=sa-nad7-3;Parent=cds-nad7;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u25:2589-2589:+
@@ -78,7 +78,7 @@ u25	gff_export	CDS	16229	16313	34.100	+	0	ID=cds-ccmFn-2;Parent=mRNA-ccmFn-2;exo
 u25	gff_export	gene	18191	18264	70.400	-	.	ID=gene-trnD-GUC;Name=trnD-GUC;annotation_tier=raw;copy_number=1;model_coverage=1.00;tool_support=oatkDB+tRNAscan-SE;unitig_loc=u25:18191-18264:-
 u25	gff_export	tRNA	18191	18264	70.400	-	.	ID=trna-trnD-GUC;Parent=gene-trnD-GUC;Name=trnD-GUC;unitig_loc=u25:18191-18264:-
 u25	gff_export	gene	21291	24211	1828.823	+	.	ID=gene-nad4;Name=nad4;annotation_tier=reconstructed;copy_number=1;unitig_loc=u25:21291-24211:+
-u25	gff_export	mRNA	21291	24211	1828.823	+	.	ID=mRNA-nad4;Parent=gene-nad4;Name=nad4;n_exons=4;n_edits=15;unitig_loc=u25:21291-24211:+
+u25	gff_export	mRNA	21291	24211	1828.823	+	.	ID=mRNA-nad4;Parent=gene-nad4;Name=nad4;n_exons=4;n_edits=15;junctions=cis,cis,cis;unitig_loc=u25:21291-24211:+
 u25	gff_export	CDS	21291	21751	571.477	+	0	ID=cds-nad4;Parent=mRNA-nad4;exon_number=1;unitig_loc=u25:21291-21751:+
 u25	gff_export	sequence_alteration	21319	21319	.	+	.	ID=sa-nad4-15;Parent=cds-nad4;edited_from=C;edited_to=T;resulting_aa=F;unitig_loc=u25:21319-21319:+
 u25	gff_export	sequence_alteration	21364	21364	.	+	.	ID=sa-nad4-14;Parent=cds-nad4;edited_from=C;edited_to=T;resulting_aa=I;unitig_loc=u25:21364-21364:+
@@ -151,8 +151,8 @@ u25	gff_export	sequence_alteration	31666	31666	.	-	.	ID=sa-cob-1;Parent=cds-cob;
 u25	gff_export	gene	33241	33296	28.700	-	.	ID=gene-nad3-2;Name=nad3;annotation_tier=raw;copy_number=1;model_coverage=0.11;partial=true;unitig_loc=u25:33241-33296:-
 u25	gff_export	mRNA	33241	33296	28.700	-	.	ID=mRNA-nad3-2;Parent=gene-nad3-2;Name=nad3;n_exons=1;n_edits=0;unitig_loc=u25:33241-33296:-
 u25	gff_export	CDS	33241	33296	28.700	-	0	ID=cds-nad3-2;Parent=mRNA-nad3-2;exon_number=1;unitig_loc=u25:33241-33296:-
-u25	gff_export	gene	34585	150761	1156.158	-	.	ID=gene-nad1;Name=nad1;annotation_tier=reconstructed;copy_number=1;unitig_loc=u25:34585-150761:-
-u25	gff_export	mRNA	34585	150761	1156.158	-	.	ID=mRNA-nad1;Parent=gene-nad1;Name=nad1;n_exons=5;n_edits=21;unitig_loc=u25:34585-150761:-
+u25	gff_export	gene	34585	150761	1156.158	-	.	ID=gene-nad1;Name=nad1;annotation_tier=reconstructed;exception=trans-splicing;copy_number=1;unitig_loc=u25:34585-150761:-
+u25	gff_export	mRNA	34585	150761	1156.158	-	.	ID=mRNA-nad1;Parent=gene-nad1;Name=nad1;n_exons=5;n_edits=21;junctions=trans,cis,trans,cis;exception=trans-splicing;unitig_loc=u25:34585-150761:-
 u25	gff_export	CDS	34585	34776	255.555	-	0	ID=cds-nad1;Parent=mRNA-nad1;exon_number=3;unitig_loc=u25:34585-34776:-
 u25	gff_export	sequence_alteration	34610	34610	.	-	.	ID=sa-nad1-10;Parent=cds-nad1;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u25:34610-34610:-
 u25	gff_export	sequence_alteration	34709	34709	.	-	.	ID=sa-nad1-9;Parent=cds-nad1;edited_from=C;edited_to=T;resulting_aa=F;unitig_loc=u25:34709-34709:-
@@ -192,13 +192,13 @@ u25	gff_export	gene	45648	47704	2204.800	+	.	ID=gene-rrn18;Name=rrn18;annotation
 u25	gff_export	rRNA	45648	47704	2204.800	+	.	ID=rrna-rrn18;Parent=gene-rrn18;Name=rrn18;unitig_loc=u25:45648-47704:+
 u25	gff_export	gene	47777	47938	148.800	+	.	ID=gene-rrn5;Name=rrn5;annotation_tier=raw;copy_number=1;model_coverage=1.00;tool_support=oatkDB;unitig_loc=u25:47777-47938:+
 u25	gff_export	rRNA	47777	47938	148.800	+	.	ID=rrna-rrn5;Parent=gene-rrn5;Name=rrn5;unitig_loc=u25:47777-47938:+
-u25	gff_export	gene	48139	165934	2465.052	+	.	ID=gene-nad5;Name=nad5;annotation_tier=reconstructed;copy_number=1;unitig_loc=u25:48139-165934:+
-u25	gff_export	mRNA	48139	165934	2465.052	+	.	ID=mRNA-nad5;Parent=gene-nad5;Name=nad5;n_exons=5;n_edits=28;unitig_loc=u25:48139-165934:+
+u25	gff_export	gene	48139	165934	2465.052	+	.	ID=gene-nad5;Name=nad5;annotation_tier=reconstructed;exception=trans-splicing;copy_number=1;unitig_loc=u25:48139-165934:+
+u25	gff_export	mRNA	48139	165934	2465.052	+	.	ID=mRNA-nad5;Parent=gene-nad5;Name=nad5;n_exons=5;n_edits=28;junctions=cis,trans,trans,cis;exception=trans-splicing;unitig_loc=u25:48139-165934:+
 u25	gff_export	CDS	48139	48161	28.070	+	1	ID=cds-nad5;Parent=mRNA-nad5;exon_number=3;unitig_loc=u25:48139-48161:+
 u25	gff_export	gene	55434	59149	3865.800	-	.	ID=gene-rrn26;Name=rrn26;annotation_tier=raw;copy_number=1;model_coverage=0.99;tool_support=barrnap+oatkDB;unitig_loc=u25:55434-59149:-
 u25	gff_export	rRNA	55434	59149	3865.800	-	.	ID=rrna-rrn26;Parent=gene-rrn26;Name=rrn26;unitig_loc=u25:55434-59149:-
-u25	gff_export	gene	65358	125132	1752.495	-	.	ID=gene-nad2;Name=nad2;annotation_tier=reconstructed;copy_number=1;unitig_loc=u25:65358-125132:-
-u25	gff_export	mRNA	65358	125132	1752.495	-	.	ID=mRNA-nad2;Parent=gene-nad2;Name=nad2;n_exons=5;n_edits=28;unitig_loc=u25:65358-125132:-
+u25	gff_export	gene	65358	125132	1752.495	-	.	ID=gene-nad2;Name=nad2;annotation_tier=reconstructed;exception=trans-splicing;copy_number=1;unitig_loc=u25:65358-125132:-
+u25	gff_export	mRNA	65358	125132	1752.495	-	.	ID=mRNA-nad2;Parent=gene-nad2;Name=nad2;n_exons=5;n_edits=28;junctions=cis,trans,cis,cis;exception=trans-splicing;unitig_loc=u25:65358-125132:-
 u25	gff_export	CDS	65358	65545	241.179	-	2	ID=cds-nad2;Parent=mRNA-nad2;exon_number=5;unitig_loc=u25:65358-65545:-
 u25	gff_export	sequence_alteration	65368	65368	.	-	.	ID=sa-nad2-28;Parent=cds-nad2;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u25:65368-65368:-
 u25	gff_export	sequence_alteration	65416	65416	.	-	.	ID=sa-nad2-27;Parent=cds-nad2;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u25:65416-65416:-
@@ -305,7 +305,7 @@ u25	gff_export	tRNA	88522	88592	66.800	-	.	ID=trna-trnfM-CAU-3;Parent=gene-trnfM
 u25	gff_export	gene	91753	91832	43.700	-	.	ID=gene-trnM-CAU;Name=trnM-CAU;annotation_tier=raw;copy_number=1;model_coverage=0.84;tool_support=oatkDB+tRNAscan-SE;unitig_loc=u25:91753-91832:-
 u25	gff_export	tRNA	91753	91832	43.700	-	.	ID=trna-trnM-CAU;Parent=gene-trnM-CAU;Name=trnM-CAU;unitig_loc=u25:91753-91832:-
 u25	gff_export	gene	93499	97335	982.452	+	.	ID=gene-cox2;Name=cox2;annotation_tier=reconstructed;copy_number=1;unitig_loc=u25:93499-97335:+
-u25	gff_export	mRNA	93499	97335	982.452	+	.	ID=mRNA-cox2;Parent=gene-cox2;Name=cox2;n_exons=3;n_edits=11;unitig_loc=u25:93499-97335:+
+u25	gff_export	mRNA	93499	97335	982.452	+	.	ID=mRNA-cox2;Parent=gene-cox2;Name=cox2;n_exons=3;n_edits=11;junctions=cis,cis;unitig_loc=u25:93499-97335:+
 u25	gff_export	CDS	93499	93880	482.382	+	0	ID=cds-cox2;Parent=mRNA-cox2;exon_number=1;unitig_loc=u25:93499-93880:+
 u25	gff_export	sequence_alteration	93569	93569	.	+	.	ID=sa-cox2-6;Parent=cds-cox2;edited_from=C;edited_to=T;resulting_aa=F;unitig_loc=u25:93569-93569:+
 u25	gff_export	sequence_alteration	93659	93659	.	+	.	ID=sa-cox2-5;Parent=cds-cox2;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u25:93659-93659:+
@@ -321,7 +321,7 @@ u25	gff_export	CDS	97253	97335	94.984	+	2	ID=cds-cox2;Parent=mRNA-cox2;exon_numb
 u25	gff_export	sequence_alteration	97273	97273	.	+	.	ID=sa-cox2-11;Parent=cds-cox2;edited_from=C;edited_to=T;resulting_aa=S;unitig_loc=u25:97273-97273:+
 u25	gff_export	sequence_alteration	97294	97294	.	+	.	ID=sa-cox2-10;Parent=cds-cox2;edited_from=C;edited_to=T;resulting_aa=W;unitig_loc=u25:97294-97294:+
 u25	gff_export	gene	100924	103188	1496.552	-	.	ID=gene-ccmFc;Name=ccmFc;annotation_tier=reconstructed;copy_number=1;unitig_loc=u25:100924-103188:-
-u25	gff_export	mRNA	100924	103188	1496.552	-	.	ID=mRNA-ccmFc;Parent=gene-ccmFc;Name=ccmFc;n_exons=2;n_edits=15;unitig_loc=u25:100924-103188:-
+u25	gff_export	mRNA	100924	103188	1496.552	-	.	ID=mRNA-ccmFc;Parent=gene-ccmFc;Name=ccmFc;n_exons=2;n_edits=15;junctions=cis;unitig_loc=u25:100924-103188:-
 u25	gff_export	CDS	100924	101476	684.723	-	1	ID=cds-ccmFc;Parent=mRNA-ccmFc;exon_number=2;unitig_loc=u25:100924-101476:-
 u25	gff_export	sequence_alteration	101010	101010	.	-	.	ID=sa-ccmFc-15;Parent=cds-ccmFc;edited_from=C;edited_to=T;resulting_aa=W;unitig_loc=u25:101010-101010:-
 u25	gff_export	sequence_alteration	101084	101084	.	-	.	ID=sa-ccmFc-14;Parent=cds-ccmFc;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u25:101084-101084:-
@@ -476,7 +476,7 @@ u25	gff_export	CDS	137864	138120	-3.621	+	0	ID=cds-rps19;Parent=mRNA-rps19;exon_
 u25	gff_export	frameshift	137963	137964	.	+	.	ID=fs-rps19-1;Parent=cds-rps19;n_bases=2;window=57027-57049;unitig_loc=u25:137963-137964:+
 u25	gff_export	sequence_alteration	138014	138014	.	+	.	ID=sa-rps19-1;Parent=cds-rps19;edited_from=C;edited_to=T;resulting_aa=F;unitig_loc=u25:138014-138014:+
 u25	gff_export	gene	138090	141479	1950.160	+	.	ID=gene-rps3;Name=rps3;annotation_tier=reconstructed;copy_number=1;unitig_loc=u25:138090-141479:+
-u25	gff_export	mRNA	138090	141479	1950.160	+	.	ID=mRNA-rps3;Parent=gene-rps3;Name=rps3;n_exons=2;n_edits=9;unitig_loc=u25:138090-141479:+
+u25	gff_export	mRNA	138090	141479	1950.160	+	.	ID=mRNA-rps3;Parent=gene-rps3;Name=rps3;n_exons=2;n_edits=9;junctions=cis;unitig_loc=u25:138090-141479:+
 u25	gff_export	CDS	138090	138163	93.837	+	0	ID=cds-rps3;Parent=mRNA-rps3;exon_number=1;unitig_loc=u25:138090-138163:+
 u25	gff_export	sequence_alteration	138153	138153	.	+	.	ID=sa-rps3-1;Parent=cds-rps3;edited_from=C;edited_to=T;resulting_aa=W;unitig_loc=u25:138153-138153:+
 u25	gff_export	CDS	139868	141479	1930.592	+	1	ID=cds-rps3;Parent=mRNA-rps3;exon_number=2;unitig_loc=u25:139868-141479:+

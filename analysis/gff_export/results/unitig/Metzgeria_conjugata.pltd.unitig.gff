@@ -7,15 +7,15 @@ u0	gff_export	gene	47	224	172.200	-	.	ID=gene-rrn16-3;Name=rrn16;annotation_tier
 u0	gff_export	rRNA	47	224	172.200	-	.	ID=rrna-rrn16-3;Parent=gene-rrn16-3;Name=rrn16;unitig_loc=u0:47-224:-
 u0	gff_export	gene	422	493	80.200	-	.	ID=gene-trnV-GAC-2;Name=trnV-GAC;annotation_tier=raw;copy_number=2;model_coverage=1.00;tool_support=oatkDB+tRNAscan-SE;unitig_loc=u0:422-493:-
 u0	gff_export	tRNA	422	493	80.200	-	.	ID=trna-trnV-GAC-2;Parent=gene-trnV-GAC-2;Name=trnV-GAC;unitig_loc=u0:422-493:-
-u0	gff_export	gene	1164	66638	388.448	.	.	ID=gene-rps12;Name=rps12;annotation_tier=reconstructed;copy_number=1;unitig_loc=u0:1164-66638:.
-u0	gff_export	mRNA	1164	66638	388.448	.	.	ID=mRNA-rps12;Parent=gene-rps12;Name=rps12;n_exons=3;n_edits=0;unitig_loc=u0:1164-66638:.
+u0	gff_export	gene	1164	66638	388.448	.	.	ID=gene-rps12;Name=rps12;annotation_tier=reconstructed;exception=trans-splicing;copy_number=1;unitig_loc=u0:1164-66638:.
+u0	gff_export	mRNA	1164	66638	388.448	.	.	ID=mRNA-rps12;Parent=gene-rps12;Name=rps12;n_exons=3;n_edits=0;junctions=trans,cis;exception=trans-splicing;unitig_loc=u0:1164-66638:.
 u0	gff_export	CDS	1164	1395	284.572	+	0	ID=cds-rps12;Parent=mRNA-rps12;exon_number=2;unitig_loc=u0:1164-1395:+
 u0	gff_export	CDS	1399	1421	24.302	+	2	ID=cds-rps12;Parent=mRNA-rps12;exon_number=3;unitig_loc=u0:1399-1421:+
 u0	gff_export	gene	1472	1939	272.500	+	.	ID=gene-rps7;Name=rps7;annotation_tier=raw;copy_number=1;model_coverage=0.99;unitig_loc=u0:1472-1939:+
 u0	gff_export	mRNA	1472	1939	272.500	+	.	ID=mRNA-rps7;Parent=gene-rps7;Name=rps7;n_exons=1;n_edits=0;unitig_loc=u0:1472-1939:+
 u0	gff_export	CDS	1472	1939	272.500	+	0	ID=cds-rps7;Parent=mRNA-rps7;exon_number=1;unitig_loc=u0:1472-1939:+
 u0	gff_export	gene	2118	4233	1278.753	+	.	ID=gene-ndhB;Name=ndhB;annotation_tier=reconstructed;copy_number=1;unitig_loc=u0:2118-4233:+
-u0	gff_export	mRNA	2118	4233	1278.753	+	.	ID=mRNA-ndhB;Parent=gene-ndhB;Name=ndhB;n_exons=2;n_edits=7;unitig_loc=u0:2118-4233:+
+u0	gff_export	mRNA	2118	4233	1278.753	+	.	ID=mRNA-ndhB;Parent=gene-ndhB;Name=ndhB;n_exons=2;n_edits=7;junctions=cis;unitig_loc=u0:2118-4233:+
 u0	gff_export	CDS	2118	2846	629.499	+	0	ID=cds-ndhB;Parent=mRNA-ndhB;exon_number=1;unitig_loc=u0:2118-2846:+
 u0	gff_export	sequence_alteration	2164	2164	.	+	.	ID=sa-ndhB-1;Parent=cds-ndhB;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u0:2164-2164:+
 u0	gff_export	sequence_alteration	2302	2302	.	+	.	ID=sa-ndhB-2;Parent=cds-ndhB;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u0:2302-2302:+
@@ -51,7 +51,7 @@ u0	gff_export	sequence_alteration	8018	8018	.	+	.	ID=sa-rpoB-7;Parent=cds-rpoB;e
 u0	gff_export	sequence_alteration	8978	8978	.	+	.	ID=sa-rpoB-8;Parent=cds-rpoB;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u0:8978-8978:+
 u0	gff_export	sequence_alteration	9590	9590	.	+	.	ID=sa-rpoB-9;Parent=cds-rpoB;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u0:9590-9590:+
 u0	gff_export	gene	9690	12415	2009.834	+	.	ID=gene-rpoC1;Name=rpoC1;annotation_tier=reconstructed;copy_number=1;unitig_loc=u0:9690-12415:+
-u0	gff_export	mRNA	9690	12415	2009.834	+	.	ID=mRNA-rpoC1;Parent=gene-rpoC1;Name=rpoC1;n_exons=2;n_edits=4;n_frameshifts=1;unitig_loc=u0:9690-12415:+
+u0	gff_export	mRNA	9690	12415	2009.834	+	.	ID=mRNA-rpoC1;Parent=gene-rpoC1;Name=rpoC1;n_exons=2;n_edits=4;n_frameshifts=1;junctions=cis;unitig_loc=u0:9690-12415:+
 u0	gff_export	CDS	9690	10121	486.648	+	0	ID=cds-rpoC1;Parent=mRNA-rpoC1;exon_number=1;unitig_loc=u0:9690-10121:+
 u0	gff_export	CDS	10735	12415	1632.061	+	0	ID=cds-rpoC1;Parent=mRNA-rpoC1;exon_number=2;unitig_loc=u0:10735-12415:+
 u0	gff_export	sequence_alteration	10931	10931	.	+	.	ID=sa-rpoC1-1;Parent=cds-rpoC1;edited_from=C;edited_to=T;resulting_aa=V;unitig_loc=u0:10931-10931:+
@@ -99,7 +99,7 @@ u0	gff_export	gene	18586	18831	257.357	+	.	ID=gene-atpH;Name=atpH;annotation_tie
 u0	gff_export	mRNA	18586	18831	257.357	+	.	ID=mRNA-atpH;Parent=gene-atpH;Name=atpH;n_exons=1;n_edits=0;unitig_loc=u0:18586-18831:+
 u0	gff_export	CDS	18586	18831	257.357	+	0	ID=cds-atpH;Parent=mRNA-atpH;exon_number=1;unitig_loc=u0:18586-18831:+
 u0	gff_export	gene	19091	20250	524.478	+	.	ID=gene-atpF;Name=atpF;annotation_tier=reconstructed;copy_number=1;unitig_loc=u0:19091-20250:+
-u0	gff_export	mRNA	19091	20250	524.478	+	.	ID=mRNA-atpF;Parent=gene-atpF;Name=atpF;n_exons=2;n_edits=1;unitig_loc=u0:19091-20250:+
+u0	gff_export	mRNA	19091	20250	524.478	+	.	ID=mRNA-atpF;Parent=gene-atpF;Name=atpF;n_exons=2;n_edits=1;junctions=cis;unitig_loc=u0:19091-20250:+
 u0	gff_export	CDS	19091	19235	135.944	+	0	ID=cds-atpF;Parent=mRNA-atpF;exon_number=1;unitig_loc=u0:19091-19235:+
 u0	gff_export	CDS	19841	20250	421.939	+	2	ID=cds-atpF;Parent=mRNA-atpF;exon_number=2;unitig_loc=u0:19841-20250:+
 u0	gff_export	sequence_alteration	19877	19877	.	+	.	ID=sa-atpF-1;Parent=cds-atpF;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u0:19877-19877:+
@@ -197,7 +197,7 @@ u0	gff_export	gene	44453	46491	437.400	-	.	ID=gene-psaB-2;Name=psaB;annotation_t
 u0	gff_export	mRNA	44453	46491	437.400	-	.	ID=mRNA-psaB-2;Parent=gene-psaB-2;Name=psaB;n_exons=1;n_edits=0;unitig_loc=u0:44453-46491:-
 u0	gff_export	CDS	44453	46491	437.400	-	0	ID=cds-psaB-2;Parent=mRNA-psaB-2;exon_number=1;unitig_loc=u0:44453-46491:-
 u0	gff_export	gene	46880	48681	585.889	-	.	ID=gene-ycf3;Name=ycf3;annotation_tier=reconstructed;copy_number=1;unitig_loc=u0:46880-48681:-
-u0	gff_export	mRNA	46880	48681	585.889	-	.	ID=mRNA-ycf3;Parent=gene-ycf3;Name=ycf3;n_exons=3;n_edits=0;unitig_loc=u0:46880-48681:-
+u0	gff_export	mRNA	46880	48681	585.889	-	.	ID=mRNA-ycf3;Parent=gene-ycf3;Name=ycf3;n_exons=3;n_edits=0;junctions=cis,cis;unitig_loc=u0:46880-48681:-
 u0	gff_export	CDS	46880	47029	185.033	-	0	ID=cds-ycf3;Parent=mRNA-ycf3;exon_number=3;unitig_loc=u0:46880-47029:-
 u0	gff_export	CDS	47680	47909	292.770	-	2	ID=cds-ycf3;Parent=mRNA-ycf3;exon_number=2;unitig_loc=u0:47680-47909:-
 u0	gff_export	CDS	48558	48681	146.810	-	0	ID=cds-ycf3;Parent=mRNA-ycf3;exon_number=1;unitig_loc=u0:48558-48681:-
@@ -315,7 +315,7 @@ u0	gff_export	CDS	65481	65834	278.597	-	0	ID=cds-rpl20;Parent=mRNA-rpl20;exon_nu
 u0	gff_export	sequence_alteration	65524	65524	.	-	.	ID=sa-rpl20-1;Parent=cds-rpl20;edited_from=C;edited_to=T;resulting_aa=F;unitig_loc=u0:65524-65524:-
 u0	gff_export	CDS	66525	66638	120.356	-	0	ID=cds-rps12;Parent=mRNA-rps12;exon_number=1;unitig_loc=u0:66525-66638:-
 u0	gff_export	gene	66712	68274	729.109	-	.	ID=gene-clpP;Name=clpP;annotation_tier=reconstructed;copy_number=1;unitig_loc=u0:66712-68274:-
-u0	gff_export	mRNA	66712	68274	729.109	-	.	ID=mRNA-clpP;Parent=gene-clpP;Name=clpP;n_exons=3;n_edits=1;unitig_loc=u0:66712-68274:-
+u0	gff_export	mRNA	66712	68274	729.109	-	.	ID=mRNA-clpP;Parent=gene-clpP;Name=clpP;n_exons=3;n_edits=1;junctions=cis,cis;unitig_loc=u0:66712-68274:-
 u0	gff_export	CDS	66712	66964	316.869	-	1	ID=cds-clpP;Parent=mRNA-clpP;exon_number=3;unitig_loc=u0:66712-66964:-
 u0	gff_export	CDS	67380	67673	385.462	-	1	ID=cds-clpP;Parent=mRNA-clpP;exon_number=2;unitig_loc=u0:67380-67673:-
 u0	gff_export	sequence_alteration	67593	67593	.	-	.	ID=sa-clpP-1;Parent=cds-clpP;edited_from=C;edited_to=T;resulting_aa=M;unitig_loc=u0:67593-67593:-
@@ -377,7 +377,7 @@ u0	gff_export	gene	78756	79034	282.849	-	.	ID=gene-rps19;Name=rps19;annotation_t
 u0	gff_export	mRNA	78756	79034	282.849	-	.	ID=mRNA-rps19;Parent=gene-rps19;Name=rps19;n_exons=1;n_edits=0;unitig_loc=u0:78756-79034:-
 u0	gff_export	CDS	78756	79034	282.849	-	0	ID=cds-rps19;Parent=mRNA-rps19;exon_number=1;unitig_loc=u0:78756-79034:-
 u0	gff_export	gene	79069	80417	764.915	-	.	ID=gene-rpl2;Name=rpl2;annotation_tier=reconstructed;copy_number=1;unitig_loc=u0:79069-80417:-
-u0	gff_export	mRNA	79069	80417	764.915	-	.	ID=mRNA-rpl2;Parent=gene-rpl2;Name=rpl2;n_exons=2;n_edits=4;unitig_loc=u0:79069-80417:-
+u0	gff_export	mRNA	79069	80417	764.915	-	.	ID=mRNA-rpl2;Parent=gene-rpl2;Name=rpl2;n_exons=2;n_edits=4;junctions=cis;unitig_loc=u0:79069-80417:-
 u0	gff_export	CDS	79069	79502	435.713	-	2	ID=cds-rpl2;Parent=mRNA-rpl2;exon_number=2;unitig_loc=u0:79069-79502:-
 u0	gff_export	sequence_alteration	79076	79076	.	-	.	ID=sa-rpl2-4;Parent=cds-rpl2;edited_from=C;edited_to=T;resulting_aa=I;unitig_loc=u0:79076-79076:-
 u0	gff_export	sequence_alteration	79094	79094	.	-	.	ID=sa-rpl2-5;Parent=cds-rpl2;edited_from=C;edited_to=T;resulting_aa=F;unitig_loc=u0:79094-79094:-
@@ -453,7 +453,7 @@ u2	gff_export	mRNA	7690	8871	1345.833	+	.	ID=mRNA-ndhH;Parent=gene-ndhH;Name=ndh
 u2	gff_export	CDS	7690	8871	1345.833	+	0	ID=cds-ndhH;Parent=mRNA-ndhH;exon_number=1;unitig_loc=u2:7690-8871:+
 u2	gff_export	sequence_alteration	7700	7700	.	+	.	ID=sa-ndhH-1;Parent=cds-ndhH;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u2:7700-7700:+
 u2	gff_export	gene	8873	10686	963.149	+	.	ID=gene-ndhA;Name=ndhA;annotation_tier=reconstructed;copy_number=1;unitig_loc=u2:8873-10686:+
-u2	gff_export	mRNA	8873	10686	963.149	+	.	ID=mRNA-ndhA;Parent=gene-ndhA;Name=ndhA;n_exons=2;n_edits=5;unitig_loc=u2:8873-10686:+
+u2	gff_export	mRNA	8873	10686	963.149	+	.	ID=mRNA-ndhA;Parent=gene-ndhA;Name=ndhA;n_exons=2;n_edits=5;junctions=cis;unitig_loc=u2:8873-10686:+
 u2	gff_export	CDS	8873	9419	478.729	+	0	ID=cds-ndhA;Parent=mRNA-ndhA;exon_number=1;unitig_loc=u2:8873-9419:+
 u2	gff_export	sequence_alteration	8892	8892	.	+	.	ID=sa-ndhA-7;Parent=cds-ndhA;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u2:8892-8892:+
 u2	gff_export	sequence_alteration	8922	8922	.	+	.	ID=sa-ndhA-6;Parent=cds-ndhA;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u2:8922-8922:+

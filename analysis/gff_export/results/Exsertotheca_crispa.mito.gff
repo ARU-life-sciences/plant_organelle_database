@@ -37,7 +37,7 @@ ctg000001c	gff_export	gene	13263	13412	25.600	-	.	ID=gene-rps10;Name=rps10;annot
 ctg000001c	gff_export	mRNA	13263	13412	25.600	-	.	ID=mRNA-rps10;Parent=gene-rps10;Name=rps10;n_exons=1;n_edits=0;unitig_loc=u168:91260-91409:+
 ctg000001c	gff_export	CDS	13263	13412	25.600	-	0	ID=cds-rps10;Parent=mRNA-rps10;exon_number=1;unitig_loc=u168:91260-91409:+
 ctg000001c	gff_export	gene	13848	17044	1402.712	-	.	ID=gene-nad7;Name=nad7;annotation_tier=reconstructed;copy_number=1;unitig_loc=u168:87628-90824:+
-ctg000001c	gff_export	mRNA	13848	17044	1402.712	-	.	ID=mRNA-nad7;Parent=gene-nad7;Name=nad7;n_exons=3;n_edits=0;unitig_loc=u168:87628-90824:+
+ctg000001c	gff_export	mRNA	13848	17044	1402.712	-	.	ID=mRNA-nad7;Parent=gene-nad7;Name=nad7;n_exons=3;n_edits=0;junctions=cis,cis;unitig_loc=u168:87628-90824:+
 ctg000001c	gff_export	CDS	13848	14820	1303.666	-	1	ID=cds-nad7;Parent=mRNA-nad7;exon_number=3;unitig_loc=u168:89852-90824:+
 ctg000001c	gff_export	CDS	15820	15888	86.822	-	1	ID=cds-nad7;Parent=mRNA-nad7;exon_number=2;unitig_loc=u168:88784-88852:+
 ctg000001c	gff_export	CDS	16905	17044	183.259	-	0	ID=cds-nad7;Parent=mRNA-nad7;exon_number=1;unitig_loc=u168:87628-87767:+
@@ -70,7 +70,7 @@ ctg000001c	gff_export	mRNA	28246	30378	1094.600	-	.	ID=mRNA-cob;Parent=gene-cob;
 ctg000001c	gff_export	CDS	28246	29010	668.800	-	2	ID=cds-cob;Parent=mRNA-cob;exon_number=2;unitig_loc=u168:75662-76426:+
 ctg000001c	gff_export	CDS	29928	30378	425.800	-	0	ID=cds-cob;Parent=mRNA-cob;exon_number=1;unitig_loc=u168:74294-74744:+
 ctg000001c	gff_export	gene	30710	33338	1079.554	-	.	ID=gene-nad1;Name=nad1;annotation_tier=reconstructed;copy_number=1;unitig_loc=u168:71334-73962:+
-ctg000001c	gff_export	mRNA	30710	33338	1079.554	-	.	ID=mRNA-nad1;Parent=gene-nad1;Name=nad1;n_exons=3;n_edits=0;unitig_loc=u168:71334-73962:+
+ctg000001c	gff_export	mRNA	30710	33338	1079.554	-	.	ID=mRNA-nad1;Parent=gene-nad1;Name=nad1;n_exons=3;n_edits=0;junctions=cis,cis;unitig_loc=u168:71334-73962:+
 ctg000001c	gff_export	CDS	30710	30968	301.429	-	1	ID=cds-nad1;Parent=mRNA-nad1;exon_number=3;unitig_loc=u168:73704-73962:+
 ctg000001c	gff_export	sequence_alteration	30735	30735	.	-	.	ID=sa-nad1-1;Parent=cds-nad1;edited_from=C;edited_to=T;resulting_aa=L;unitig_loc=u168:73937-73937:+
 ctg000001c	gff_export	CDS	31822	32262	555.148	-	1	ID=cds-nad1;Parent=mRNA-nad1;exon_number=2;unitig_loc=u168:72410-72850:+
@@ -83,7 +83,7 @@ ctg000001c	gff_export	mRNA	34559	34677	59.000	-	.	ID=mRNA-sdh4-2;Parent=gene-sdh
 ctg000001c	gff_export	CDS	34559	34677	59.000	-	0	ID=cds-sdh4-2;Parent=mRNA-sdh4-2;exon_number=1;unitig_loc=u168:69995-70113:+
 ctg000001c	gff_export	CDS	35687	36218	533.700	-	0	ID=cds-cox3;Parent=mRNA-cox3;exon_number=1;unitig_loc=u168:68454-68985:+
 ctg000001c	gff_export	gene	36234	40833	900.173	-	.	ID=gene-cox2;Name=cox2;annotation_tier=reconstructed;copy_number=1;unitig_loc=u168:63839-68438:+
-ctg000001c	gff_export	mRNA	36234	40833	900.173	-	.	ID=mRNA-cox2;Parent=gene-cox2;Name=cox2;n_exons=4;n_edits=0;unitig_loc=u168:63839-68438:+
+ctg000001c	gff_export	mRNA	36234	40833	900.173	-	.	ID=mRNA-cox2;Parent=gene-cox2;Name=cox2;n_exons=4;n_edits=0;junctions=cis,cis,cis;unitig_loc=u168:63839-68438:+
 ctg000001c	gff_export	CDS	36234	36298	76.053	-	2	ID=cds-cox2;Parent=mRNA-cox2;exon_number=4;unitig_loc=u168:68374-68438:+
 ctg000001c	gff_export	CDS	37720	38037	429.304	-	2	ID=cds-cox2;Parent=mRNA-cox2;exon_number=3;unitig_loc=u168:66635-66952:+
 ctg000001c	gff_export	CDS	39433	39701	344.284	-	1	ID=cds-cox2;Parent=mRNA-cox2;exon_number=2;unitig_loc=u168:64971-65239:+
@@ -108,15 +108,15 @@ ctg000001c	gff_export	tRNA	49638	49711	77.000	+	.	ID=trna-trnR-ACG;Parent=gene-t
 ctg000001c	gff_export	gene	49803	49874	86.700	+	.	ID=gene-trnG-GCC;Name=trnG-GCC;annotation_tier=raw;copy_number=1;model_coverage=1.00;tool_support=oatkDB+tRNAscan-SE;unitig_loc=u168:54798-54869:-
 ctg000001c	gff_export	tRNA	49803	49874	86.700	+	.	ID=trna-trnG-GCC;Parent=gene-trnG-GCC;Name=trnG-GCC;unitig_loc=u168:54798-54869:-
 ctg000001c	gff_export	gene	50354	52790	1663.370	-	.	ID=gene-nad2;Name=nad2;annotation_tier=reconstructed;copy_number=1;unitig_loc=u168:51882-54318:+
-ctg000001c	gff_export	mRNA	50354	52790	1663.370	-	.	ID=mRNA-nad2;Parent=gene-nad2;Name=nad2;n_exons=2;n_edits=0;unitig_loc=u168:51882-54318:+
+ctg000001c	gff_export	mRNA	50354	52790	1663.370	-	.	ID=mRNA-nad2;Parent=gene-nad2;Name=nad2;n_exons=2;n_edits=0;junctions=cis;unitig_loc=u168:51882-54318:+
 ctg000001c	gff_export	CDS	50354	51667	1658.572	-	0	ID=cds-nad2;Parent=mRNA-nad2;exon_number=2;unitig_loc=u168:53005-54318:+
 ctg000001c	gff_export	CDS	52635	52790	202.018	-	0	ID=cds-nad2;Parent=mRNA-nad2;exon_number=1;unitig_loc=u168:51882-52037:+
 ctg000001c	gff_export	gene	52817	55084	1691.761	-	.	ID=gene-nad4;Name=nad4;annotation_tier=reconstructed;copy_number=1;unitig_loc=u168:49588-51855:+
-ctg000001c	gff_export	mRNA	52817	55084	1691.761	-	.	ID=mRNA-nad4;Parent=gene-nad4;Name=nad4;n_exons=2;n_edits=0;unitig_loc=u168:49588-51855:+
+ctg000001c	gff_export	mRNA	52817	55084	1691.761	-	.	ID=mRNA-nad4;Parent=gene-nad4;Name=nad4;n_exons=2;n_edits=0;junctions=cis;unitig_loc=u168:49588-51855:+
 ctg000001c	gff_export	CDS	52817	53840	1317.177	-	1	ID=cds-nad4;Parent=mRNA-nad4;exon_number=2;unitig_loc=u168:50832-51855:+
 ctg000001c	gff_export	CDS	54624	55084	580.388	-	0	ID=cds-nad4;Parent=mRNA-nad4;exon_number=1;unitig_loc=u168:49588-50048:+
 ctg000001c	gff_export	gene	55732	62072	2305.452	-	.	ID=gene-nad5;Name=nad5;annotation_tier=reconstructed;copy_number=1;unitig_loc=u168:42600-48940:+
-ctg000001c	gff_export	mRNA	55732	62072	2305.452	-	.	ID=mRNA-nad5;Parent=gene-nad5;Name=nad5;n_exons=4;n_edits=1;unitig_loc=u168:42600-48940:+
+ctg000001c	gff_export	mRNA	55732	62072	2305.452	-	.	ID=mRNA-nad5;Parent=gene-nad5;Name=nad5;n_exons=4;n_edits=1;junctions=cis,cis,cis;unitig_loc=u168:42600-48940:+
 ctg000001c	gff_export	CDS	55732	56308	732.515	-	1	ID=cds-nad5;Parent=mRNA-nad5;exon_number=4;unitig_loc=u168:48364-48940:+
 ctg000001c	gff_export	sequence_alteration	56085	56085	.	-	.	ID=sa-nad5-2;Parent=cds-nad5;edited_from=C;edited_to=T;resulting_aa=C;unitig_loc=u168:48587-48587:+
 ctg000001c	gff_export	CDS	58941	59641	882.784	-	0	ID=cds-nad5;Parent=mRNA-nad5;exon_number=3;unitig_loc=u168:45031-45731:+
@@ -174,7 +174,7 @@ ctg000001c	gff_export	tRNA	83517	83601	75.000	+	.	ID=trna-trnL-UAG;Parent=gene-t
 ctg000001c	gff_export	gene	84874	84945	73.700	+	.	ID=gene-trnQ-UUG;Name=trnQ-UUG;annotation_tier=raw;copy_number=1;model_coverage=1.00;tool_support=oatkDB+tRNAscan-SE;unitig_loc=u168:19727-19798:-
 ctg000001c	gff_export	tRNA	84874	84945	73.700	+	.	ID=trna-trnQ-UUG;Parent=gene-trnQ-UUG;Name=trnQ-UUG;unitig_loc=u168:19727-19798:-
 ctg000001c	gff_export	gene	84996	87211	1524.256	-	.	ID=gene-ccmFc;Name=ccmFc;annotation_tier=reconstructed;copy_number=1;unitig_loc=u168:17461-19676:+
-ctg000001c	gff_export	mRNA	84996	87211	1524.256	-	.	ID=mRNA-ccmFc;Parent=gene-ccmFc;Name=ccmFc;n_exons=2;n_edits=0;unitig_loc=u168:17461-19676:+
+ctg000001c	gff_export	mRNA	84996	87211	1524.256	-	.	ID=mRNA-ccmFc;Parent=gene-ccmFc;Name=ccmFc;n_exons=2;n_edits=0;junctions=cis;unitig_loc=u168:17461-19676:+
 ctg000001c	gff_export	CDS	84996	85584	736.319	-	1	ID=cds-ccmFc;Parent=mRNA-ccmFc;exon_number=2;unitig_loc=u168:19088-19676:+
 ctg000001c	gff_export	sequence_alteration	85414	85414	.	-	.	ID=sa-ccmFc-1;Parent=cds-ccmFc;edited_from=C;edited_to=T;resulting_aa=F;unitig_loc=u168:19258-19258:+
 ctg000001c	gff_export	CDS	86346	87211	989.864	-	0	ID=cds-ccmFc;Parent=mRNA-ccmFc;exon_number=1;unitig_loc=u168:17461-18326:+
